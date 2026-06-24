@@ -1,7 +1,14 @@
 "use client";
 
-import type { Stop } from "@/types";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+import type { Coordinates, Stop } from "@/types";
 import StopInput from "./StopInput";
+
+const RouteMap = dynamic(() => import("./RouteMap"), { ssr: false });
+const LocationPickerModal = dynamic(() => import("./LocationPickerModal"), {
+  ssr: false,
+});
 
 interface StopListProps {
   stops: Stop[];
@@ -16,10 +23,13 @@ export default function StopList({
   onStopsChange,
   onRoundTripChange,
 }: StopListProps) {
+  const [modalStopId, setModalStopId] = useState<string | null>(null);
+  const [modalQuery, setModalQuery] = useState("");
+
   function updateStop(
     id: string,
     label: string,
-    coordinates: [number, number] | null
+    coordinates: Coordinates | null
   ) {
     onStopsChange(
       stops.map((s) => (s.id === id ? { ...s, label, coordinates } : s))
@@ -43,9 +53,23 @@ export default function StopList({
     onStopsChange(stops.filter((s) => s.id !== id));
   }
 
+  function openMapPicker(stopId: string, initialQuery: string) {
+    setModalStopId(stopId);
+    setModalQuery(initialQuery);
+  }
+
+  function handleMapSelect(label: string, coordinates: Coordinates) {
+    if (modalStopId) {
+      updateStop(modalStopId, label, coordinates);
+    }
+    setModalStopId(null);
+    setModalQuery("");
+  }
+
   const start = stops[0];
   const end = stops[stops.length - 1];
   const intermediates = stops.slice(1, -1);
+  const startCoordinates = start?.coordinates ?? null;
 
   return (
     <div className="space-y-4">
@@ -69,6 +93,7 @@ export default function StopList({
           label="Start"
           value={start.label}
           onChange={(label, coords) => updateStop(start.id, label, coords)}
+          onMapPickRequest={(q) => openMapPicker(start.id, q)}
           placeholder="Where you leaving from bestie?"
         />
       )}
@@ -80,6 +105,7 @@ export default function StopList({
               label={`Stop ${i + 1}`}
               value={stop.label}
               onChange={(label, coords) => updateStop(stop.id, label, coords)}
+              onMapPickRequest={(q) => openMapPicker(stop.id, q)}
               placeholder="Detour? We don't judge."
             />
           </div>
@@ -99,6 +125,7 @@ export default function StopList({
           label="Destination"
           value={end.label}
           onChange={(label, coords) => updateStop(end.id, label, coords)}
+          onMapPickRequest={(q) => openMapPicker(end.id, q)}
           placeholder="Where you tryna go?"
         />
       )}
@@ -112,6 +139,19 @@ export default function StopList({
           + Add stop (max 10)
         </button>
       )}
+
+      <RouteMap stops={stops} />
+
+      <LocationPickerModal
+        open={modalStopId !== null}
+        initialQuery={modalQuery}
+        startCoordinates={startCoordinates}
+        onClose={() => {
+          setModalStopId(null);
+          setModalQuery("");
+        }}
+        onSelect={handleMapSelect}
+      />
     </div>
   );
 }

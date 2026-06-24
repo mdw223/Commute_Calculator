@@ -70,6 +70,17 @@ export interface GeocodeSuggestion {
   coordinates: Coordinates;
 }
 
+export interface PoiSuggestion {
+  label: string;
+  coordinates: Coordinates;
+  category?: string;
+  distanceMeters?: number;
+}
+
+export interface RouteGeometry {
+  coordinates: Coordinates[];
+}
+
 export interface SavedPreferences {
   stops: Stop[];
   costSettings: CostSettings;

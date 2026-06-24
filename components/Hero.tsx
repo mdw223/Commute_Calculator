@@ -10,7 +10,7 @@ export default function Hero() {
         This Economy
       </h1>
       <p className="mt-4 font-display text-xl md:text-2xl font-bold uppercase text-ink">
-        Is This Drive Worth Your Life?
+        Is This Drive Worth Your Money and Time?
       </p>
       <p className="mt-3 text-muted max-w-lg mx-auto text-sm md:text-base">
         Enter your route. The math will decide your fate. No signup. No cap.
