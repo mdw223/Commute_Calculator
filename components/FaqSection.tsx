@@ -12,8 +12,8 @@ const FAQ_ITEMS = [
     a: "OpenRouteService — real driving routes, not a crow flying in a straight line. Multi-stop supported. API calls go through our server so your key stays secret.",
   },
   {
-    q: "What's the $0.10/mile maintenance thing?",
-    a: "Industry ballpark for wear and tear — oil, tires, depreciation, general 'your car is aging' energy. Locked in. The math ain't optional.",
+    q: "What's the maintenance cost thing?",
+    a: "Wear and tear — oil, tires, depreciation, your car aging in real time. It's on by default at ~$0.10/mile, but you can toggle it off or adjust the rate ($0.05–$0.25/mi). Turn it off and we'll still show you what it would've cost, strikethrough style.",
   },
   {
     q: "Why is round trip on by default?",

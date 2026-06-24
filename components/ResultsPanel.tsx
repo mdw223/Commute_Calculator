@@ -62,8 +62,13 @@ export default function ResultsPanel({
         />
         <Row label="Gas" value={formatCurrency(breakdown.gasCost)} />
         <Row
-          label="Maintenance ($0.10/mi)"
-          value={formatCurrency(breakdown.maintenanceCost)}
+          label={`Maintenance ($${settings.maintenancePerMile.toFixed(2)}/mi)`}
+          value={formatCurrency(
+            settings.includeMaintenance
+              ? breakdown.maintenanceCost
+              : breakdown.potentialMaintenanceCost
+          )}
+          excluded={!settings.includeMaintenance}
         />
         {settings.includeTimeValue && (
           <Row label="Time cost" value={formatCurrency(breakdown.timeCost)} />
@@ -155,19 +160,26 @@ function Row({
   value,
   bold,
   highlight,
+  excluded,
 }: {
   label: string;
   value: string;
   bold?: boolean;
   highlight?: boolean;
+  excluded?: boolean;
 }) {
   return (
     <div className="flex justify-between items-baseline gap-4">
-      <span className={`text-sm ${bold ? "font-bold" : "text-muted"}`}>
-        {label}
+      <span className={`text-sm flex items-baseline gap-2 ${bold ? "font-bold" : "text-muted"}`}>
+        <span className={excluded ? "line-through opacity-60" : ""}>{label}</span>
+        {excluded && (
+          <span className="text-xs font-mono uppercase text-headline shrink-0">
+            excluded
+          </span>
+        )}
       </span>
       <span
-        className={`font-mono ${bold ? "font-bold text-headline" : ""} ${highlight ? "text-lg" : ""}`}
+        className={`font-mono ${bold ? "font-bold text-headline" : ""} ${highlight ? "text-lg" : ""} ${excluded ? "line-through text-muted opacity-60" : ""}`}
       >
         {value}
       </span>

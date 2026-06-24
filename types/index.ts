@@ -16,6 +16,8 @@ export interface FrequencySettings {
 export interface CostSettings {
   gasPricePerGallon: number;
   mpg: number;
+  includeMaintenance: boolean;
+  maintenancePerMile: number;
   includeTimeValue: boolean;
   hourlyRate: number;
   hourlySalary: number;
@@ -38,6 +40,7 @@ export interface RouteResult {
 export interface CostBreakdown {
   gasCost: number;
   maintenanceCost: number;
+  potentialMaintenanceCost: number;
   timeCost: number;
   tripCost: number;
   periodCost: number;

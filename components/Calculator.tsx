@@ -34,7 +34,7 @@ const FEATURE_BLURBS = [
   },
   {
     title: "Full receipt",
-    body: "Gas + maintenance + your time (if you dare).",
+    body: "Gas + optional maintenance + your time (if you dare).",
   },
   {
     title: "Zero storage",
@@ -57,7 +57,8 @@ export default function Calculator() {
     const saved = loadPreferences();
     if (saved) {
       if (saved.stops?.length >= 2) setStops(saved.stops);
-      if (saved.costSettings) setCostSettings(saved.costSettings);
+      if (saved.costSettings)
+        setCostSettings({ ...DEFAULT_COST_SETTINGS, ...saved.costSettings });
     }
     setHydrated(true);
   }, []);

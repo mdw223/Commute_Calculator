@@ -5,6 +5,8 @@ const STORAGE_KEY = "gas-in-this-economy-prefs";
 export const DEFAULT_COST_SETTINGS: CostSettings = {
   gasPricePerGallon: 3.5,
   mpg: 25,
+  includeMaintenance: true,
+  maintenancePerMile: 0.1,
   includeTimeValue: false,
   hourlyRate: 25,
   hourlySalary: 0,

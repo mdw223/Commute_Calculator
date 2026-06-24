@@ -7,8 +7,6 @@ import type {
   WorthItAnalysis,
 } from "@/types";
 
-const MAINTENANCE_PER_MILE = 0.1;
-
 export function getFrequencyMultiplier(
   count: number,
   unit: FrequencyUnit
@@ -53,14 +51,22 @@ export function calculateCosts(
   route: RouteResult,
   settings: CostSettings
 ): CostBreakdown {
-  const { gasPricePerGallon, mpg, includeTimeValue, hourlyRate, frequency } =
-    settings;
+  const {
+    gasPricePerGallon,
+    mpg,
+    includeMaintenance,
+    maintenancePerMile,
+    includeTimeValue,
+    hourlyRate,
+    frequency,
+  } = settings;
 
   const totalMiles = route.totalMiles;
   const totalMinutes = route.totalMinutes;
 
   const gasCost = mpg > 0 ? (totalMiles / mpg) * gasPricePerGallon : 0;
-  const maintenanceCost = totalMiles * MAINTENANCE_PER_MILE;
+  const potentialMaintenanceCost = totalMiles * maintenancePerMile;
+  const maintenanceCost = includeMaintenance ? potentialMaintenanceCost : 0;
   const timeCost = includeTimeValue
     ? (totalMinutes / 60) * hourlyRate
     : 0;
@@ -74,6 +80,7 @@ export function calculateCosts(
   return {
     gasCost,
     maintenanceCost,
+    potentialMaintenanceCost,
     timeCost,
     tripCost,
     periodCost,

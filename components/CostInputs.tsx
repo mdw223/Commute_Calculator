@@ -58,10 +58,55 @@ export default function CostInputs({ settings, onChange }: CostInputsProps) {
         />
       </div>
 
-      <p className="text-sm text-muted border-l-4 border-headline pl-3">
-        Maintenance is locked at <strong>$0.10/mile</strong> — tires, oil, vibes
-        degrading. Not editable. The economy said so.
-      </p>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={settings.includeMaintenance}
+          onChange={(e) => update("includeMaintenance", e.target.checked)}
+          className="w-4 h-4 accent-headline"
+        />
+        <span className="font-mono text-xs uppercase">
+          Include maintenance wear &amp; tear
+        </span>
+      </label>
+
+      {settings.includeMaintenance && (
+        <div>
+          <div className="flex justify-between items-baseline mb-1">
+            <label className="font-mono text-xs uppercase tracking-wider">
+              Maintenance ($/mile)
+            </label>
+            <span className="font-display text-lg font-bold text-headline">
+              ${settings.maintenancePerMile.toFixed(2)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0.05}
+            max={0.25}
+            step={0.01}
+            value={settings.maintenancePerMile}
+            onChange={(e) =>
+              update("maintenancePerMile", parseFloat(e.target.value))
+            }
+            className="w-full accent-headline"
+          />
+          <div className="flex justify-between text-xs text-muted font-mono mt-1">
+            <span>$0.05</span>
+            <span>$0.25</span>
+          </div>
+          <p className="text-sm text-muted mt-2 border-l-4 border-headline pl-3">
+            Tires, oil, your car slowly giving up — industry ballpark is ~$0.10/mi.
+          </p>
+        </div>
+      )}
+
+      {!settings.includeMaintenance && (
+        <p className="text-sm text-muted border-l-4 border-headline pl-3">
+          Maintenance excluded from your total. We&apos;ll still show you what it
+          would&apos;ve cost — the math ain&apos;t optional, bestie.
+        </p>
+      )}
 
       <label className="flex items-center gap-2 cursor-pointer">
         <input

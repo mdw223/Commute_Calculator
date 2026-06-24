@@ -2,7 +2,7 @@ const HEADLINES = [
   "BREAKING: Gas prices remain unhinged · Experts say 'just stay home bestie'",
   "LOCAL DRIVER questions life choices after $47 fill-up · 'In this economy??'",
   "STUDY: Your commute costs more than your streaming subscriptions combined",
-  "ALERT: Maintenance is $0.10/mile and nobody warned you · The math ain't mathing",
+  "ALERT: Maintenance defaults to $0.10/mile — toggle it off if you're in denial · The math ain't mathing",
   "OPINION: Round trips are a scam · Society refuses to comment",
 ];
 
