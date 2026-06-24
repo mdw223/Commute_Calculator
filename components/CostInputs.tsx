@@ -108,6 +108,49 @@ export default function CostInputs({ settings, onChange }: CostInputsProps) {
         </p>
       )}
 
+      <p className="text-sm text-muted border-l-4 border-headline pl-3">
+        Optional extras — nothing here is required. Turn on only what you want.{" "}
+        <strong className="text-ink">Time worth</strong> gets baked into your
+        total cost. <strong className="text-ink">Salary</strong> and{" "}
+        <strong className="text-ink">side hustle</strong> are comparisons only —
+        they don&apos;t change the dollar total.
+      </p>
+
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={settings.includeHourlySalary}
+          onChange={(e) => update("includeHourlySalary", e.target.checked)}
+          className="w-4 h-4 accent-headline"
+        />
+        <span className="font-mono text-xs uppercase">
+          Hourly salary (for break-even math)
+        </span>
+      </label>
+
+      {settings.includeHourlySalary && (
+        <div>
+          <label className="block font-mono text-xs uppercase tracking-wider mb-1">
+            Your salary ($/hr)
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={settings.hourlySalary || ""}
+            onChange={(e) =>
+              update("hourlySalary", parseFloat(e.target.value) || 0)
+            }
+            className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
+            placeholder="25"
+          />
+          <p className="text-sm text-muted mt-2 border-l-4 border-headline pl-3">
+            Powers the verdict roast and break-even math. Doesn&apos;t add to
+            your trip total.
+          </p>
+        </div>
+      )}
+
       <label className="flex items-center gap-2 cursor-pointer">
         <input
           type="checkbox"
@@ -136,42 +179,47 @@ export default function CostInputs({ settings, onChange }: CostInputsProps) {
             className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
             placeholder="25"
           />
+          <p className="text-sm text-muted mt-2 border-l-4 border-headline pl-3">
+            Adds a &ldquo;time cost&rdquo; line to your trip total — drive
+            minutes × your rate.
+          </p>
         </div>
       )}
 
-      <div>
-        <label className="block font-mono text-xs uppercase tracking-wider mb-1">
-          Hourly salary (for break-even math)
-        </label>
+      <label className="flex items-center gap-2 cursor-pointer">
         <input
-          type="number"
-          min={0}
-          step={1}
-          value={settings.hourlySalary || ""}
-          onChange={(e) =>
-            update("hourlySalary", parseFloat(e.target.value) || 0)
-          }
-          className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
-          placeholder="Optional — we need this for the verdict"
+          type="checkbox"
+          checked={settings.includeSideHustle}
+          onChange={(e) => update("includeSideHustle", e.target.checked)}
+          className="w-4 h-4 accent-headline"
         />
-      </div>
-
-      <div>
-        <label className="block font-mono text-xs uppercase tracking-wider mb-1">
+        <span className="font-mono text-xs uppercase">
           Side hustle rate ($/hr)
-        </label>
-        <input
-          type="number"
-          min={0}
-          step={1}
-          value={settings.sideHustleRate || ""}
-          onChange={(e) =>
-            update("sideHustleRate", parseFloat(e.target.value) || 0)
-          }
-          className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
-          placeholder="Etsy, DoorDash, whatever pays"
-        />
-      </div>
+        </span>
+      </label>
+
+      {settings.includeSideHustle && (
+        <div>
+          <label className="block font-mono text-xs uppercase tracking-wider mb-1">
+            Your hustle rate ($/hr)
+          </label>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={settings.sideHustleRate || ""}
+            onChange={(e) =>
+              update("sideHustleRate", parseFloat(e.target.value) || 0)
+            }
+            className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
+            placeholder="Etsy, DoorDash, whatever pays"
+          />
+          <p className="text-sm text-muted mt-2 border-l-4 border-headline pl-3">
+            Shows how many hustle hours you&apos;d need to earn this trip.
+            Optional — Etsy, DoorDash, whatever pays.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block font-mono text-xs uppercase tracking-wider mb-2">

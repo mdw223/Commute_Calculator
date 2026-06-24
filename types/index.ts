@@ -20,7 +20,9 @@ export interface CostSettings {
   maintenancePerMile: number;
   includeTimeValue: boolean;
   hourlyRate: number;
+  includeHourlySalary: boolean;
   hourlySalary: number;
+  includeSideHustle: boolean;
   sideHustleRate: number;
   roundTrip: boolean;
   frequency: FrequencySettings;

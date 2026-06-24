@@ -11,6 +11,7 @@ import {
   createDefaultStops,
   DEFAULT_COST_SETTINGS,
   loadPreferences,
+  migrateCostSettings,
   savePreferences,
 } from "@/lib/localStorage";
 import type {
@@ -58,7 +59,7 @@ export default function Calculator() {
     if (saved) {
       if (saved.stops?.length >= 2) setStops(saved.stops);
       if (saved.costSettings)
-        setCostSettings({ ...DEFAULT_COST_SETTINGS, ...saved.costSettings });
+        setCostSettings(migrateCostSettings(saved.costSettings));
     }
     setHydrated(true);
   }, []);

@@ -89,68 +89,59 @@ export default function ResultsPanel({
         )}
       </div>
 
-      <div className="border-3 border-ink bg-surface p-4 shadow-brutal space-y-3">
-        <h3 className="font-mono text-xs uppercase tracking-widest text-headline">
-          Break-even math (no cap)
-        </h3>
-        {worthIt.breakEvenHourly != null && (
-          <Row
-            label="Break-even hourly rate"
-            value={`${formatCurrency(worthIt.breakEvenHourly)}/hr`}
-          />
-        )}
-        {worthIt.workHoursToCoverTrip != null && (
-          <Row
-            label="Work hours to cover one trip"
-            value={formatHours(worthIt.workHoursToCoverTrip)}
-          />
-        )}
-        {worthIt.workHoursToCoverPeriod != null && (
-          <Row
-            label={`Work hours to cover ${periodLabel}`}
-            value={formatHours(worthIt.workHoursToCoverPeriod)}
-          />
-        )}
-        {worthIt.paycheckPercent != null && (
-          <Row
-            label="Share of period earnings"
-            value={`${worthIt.paycheckPercent.toFixed(1)}%`}
-            bold
-          />
-        )}
-        {!worthIt.breakEvenHourly &&
-          !worthIt.workHoursToCoverTrip &&
-          !worthIt.paycheckPercent && (
-            <p className="text-sm text-muted">
-              Add your hourly salary so we can roast you properly.
-            </p>
+      {settings.includeHourlySalary && (
+        <div className="border-3 border-ink bg-surface p-4 shadow-brutal space-y-3">
+          <h3 className="font-mono text-xs uppercase tracking-widest text-headline">
+            Break-even math (no cap)
+          </h3>
+          {worthIt.breakEvenHourly != null && (
+            <Row
+              label="Break-even hourly rate"
+              value={`${formatCurrency(worthIt.breakEvenHourly)}/hr`}
+            />
           )}
-      </div>
+          {worthIt.workHoursToCoverTrip != null && (
+            <Row
+              label="Work hours to cover one trip"
+              value={formatHours(worthIt.workHoursToCoverTrip)}
+            />
+          )}
+          {worthIt.workHoursToCoverPeriod != null && (
+            <Row
+              label={`Work hours to cover ${periodLabel}`}
+              value={formatHours(worthIt.workHoursToCoverPeriod)}
+            />
+          )}
+          {worthIt.paycheckPercent != null && (
+            <Row
+              label="Share of period earnings"
+              value={`${worthIt.paycheckPercent.toFixed(1)}%`}
+              bold
+            />
+          )}
+        </div>
+      )}
 
-      <div className="border-3 border-ink bg-surface p-4 shadow-brutal space-y-3">
-        <h3 className="font-mono text-xs uppercase tracking-widest text-headline">
-          Side hustle comparator
-        </h3>
-        {worthIt.sideHustleHoursTrip != null && (
-          <Row
-            label="Side hustle hours (one trip)"
-            value={formatHours(worthIt.sideHustleHoursTrip)}
-          />
-        )}
-        {worthIt.sideHustleHoursPeriod != null && (
-          <Row
-            label={`Side hustle hours (${periodLabel})`}
-            value={formatHours(worthIt.sideHustleHoursPeriod)}
-            bold
-          />
-        )}
-        {worthIt.sideHustleHoursTrip == null && (
-          <p className="text-sm text-muted">
-            Drop your side hustle $/hr — Etsy, DoorDash, whatever keeps the lights
-            on.
-          </p>
-        )}
-      </div>
+      {settings.includeSideHustle && (
+        <div className="border-3 border-ink bg-surface p-4 shadow-brutal space-y-3">
+          <h3 className="font-mono text-xs uppercase tracking-widest text-headline">
+            Side hustle comparator
+          </h3>
+          {worthIt.sideHustleHoursTrip != null && (
+            <Row
+              label="Side hustle hours (one trip)"
+              value={formatHours(worthIt.sideHustleHoursTrip)}
+            />
+          )}
+          {worthIt.sideHustleHoursPeriod != null && (
+            <Row
+              label={`Side hustle hours (${periodLabel})`}
+              value={formatHours(worthIt.sideHustleHoursPeriod)}
+              bold
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

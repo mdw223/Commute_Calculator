@@ -105,35 +105,49 @@ export function analyzeWorthIt(
   breakdown: CostBreakdown,
   settings: CostSettings
 ): WorthItAnalysis {
-  const { hourlySalary, sideHustleRate, frequency } = settings;
+  const {
+    includeHourlySalary,
+    hourlySalary,
+    includeSideHustle,
+    sideHustleRate,
+    frequency,
+  } = settings;
   const driveHours = breakdown.totalMinutes / 60;
 
   const breakEvenHourly =
     driveHours > 0 ? breakdown.tripCost / driveHours : null;
 
-  const workHoursToCoverTrip =
-    hourlySalary > 0 ? breakdown.tripCost / hourlySalary : null;
+  const salaryActive = includeHourlySalary && hourlySalary > 0;
+
+  const workHoursToCoverTrip = salaryActive
+    ? breakdown.tripCost / hourlySalary
+    : null;
 
   const periodWorkHours = getHoursPerPeriod(frequency.unit) * frequency.count;
   const paycheckPercent =
-    hourlySalary > 0 && periodWorkHours > 0
+    salaryActive && periodWorkHours > 0
       ? (breakdown.periodCost / (hourlySalary * periodWorkHours)) * 100
       : null;
 
-  const workHoursToCoverPeriod =
-    hourlySalary > 0 ? breakdown.periodCost / hourlySalary : null;
+  const workHoursToCoverPeriod = salaryActive
+    ? breakdown.periodCost / hourlySalary
+    : null;
 
-  const sideHustleHoursTrip =
-    sideHustleRate > 0 ? breakdown.tripCost / sideHustleRate : null;
+  const hustleActive = includeSideHustle && sideHustleRate > 0;
 
-  const sideHustleHoursPeriod =
-    sideHustleRate > 0 ? breakdown.periodCost / sideHustleRate : null;
+  const sideHustleHoursTrip = hustleActive
+    ? breakdown.tripCost / sideHustleRate
+    : null;
+
+  const sideHustleHoursPeriod = hustleActive
+    ? breakdown.periodCost / sideHustleRate
+    : null;
 
   let mood: VerdictMood = "meh";
   let headline = "THE MATH IS… MID";
   let subline = "Not terrible, not great. Very on brand for this economy.";
 
-  if (hourlySalary > 0 && driveHours > 0) {
+  if (salaryActive && driveHours > 0) {
     const earningsIfWorking = hourlySalary * driveHours;
     const ratio = breakdown.tripCost / earningsIfWorking;
 
