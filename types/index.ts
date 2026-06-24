@@ -101,3 +101,15 @@ export interface SavedRoute {
   costSettings: CostSettings;
   lastResults?: SavedRouteResults;
 }
+
+export type SalaryField = "hourly" | "weekly" | "monthly" | "yearly";
+
+export interface SalaryCalculatorState {
+  hoursPerWeek: number;
+  weeksPerYear: number;
+  showTakeHome: boolean;
+  taxRate: number;
+  taxRateManuallySet: boolean;
+  values: Record<SalaryField, string>;
+  lastEditedField: SalaryField | null;
+}

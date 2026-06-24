@@ -27,6 +27,8 @@ import FaqSection from "./FaqSection";
 import Hero from "./Hero";
 import ResultsPanel from "./ResultsPanel";
 import SavedRoutesModal from "./SavedRoutesModal";
+import SiteFooter from "./SiteFooter";
+import SiteNav from "./SiteNav";
 import StopList from "./StopList";
 import Ticker from "./Ticker";
 
@@ -149,6 +151,7 @@ export default function Calculator() {
   return (
     <>
       <Ticker />
+      <SiteNav />
       <Hero />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
@@ -229,11 +232,7 @@ export default function Calculator() {
         onLoadRoute={handleLoadRoute}
       />
 
-      <footer className="border-t-4 border-ink py-6 text-center">
-        <p className="font-mono text-xs text-muted uppercase tracking-widest">
-          Gas In This Economy · No cap · © {new Date().getFullYear()}
-        </p>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
