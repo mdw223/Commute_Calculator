@@ -18,6 +18,7 @@ import {
 import dynamic from "next/dynamic";
 import { useSyncExternalStore, useState } from "react";
 import type { Coordinates, Stop } from "@/types";
+import OpenInMapsMenu from "./OpenInMapsMenu";
 import StopRow, { StopRowStatic } from "./StopRow";
 
 const RouteMap = dynamic(() => import("./RouteMap"), { ssr: false });
@@ -30,6 +31,7 @@ interface StopListProps {
   roundTrip: boolean;
   onStopsChange: (stops: Stop[]) => void;
   onRoundTripChange: (value: boolean) => void;
+  onOpenMyRoutes: () => void;
 }
 
 const subscribe = () => () => {};
@@ -39,6 +41,7 @@ export default function StopList({
   roundTrip,
   onStopsChange,
   onRoundTripChange,
+  onOpenMyRoutes,
 }: StopListProps) {
   const [modalStopId, setModalStopId] = useState<string | null>(null);
   const [modalQuery, setModalQuery] = useState("");
@@ -108,19 +111,28 @@ export default function StopList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <p className="font-mono text-xs uppercase tracking-widest text-headline">
           ★ Classified ★ Route Evidence
         </p>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={roundTrip}
-            onChange={(e) => onRoundTripChange(e.target.checked)}
-            className="w-4 h-4 accent-headline border-2 border-ink"
-          />
-          <span className="font-mono text-xs uppercase">Round trip</span>
-        </label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenMyRoutes}
+            className="border-3 border-ink bg-surface px-3 py-1 font-mono text-xs uppercase hover:bg-cta/20 transition-colors"
+          >
+            My Routes
+          </button>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={roundTrip}
+              onChange={(e) => onRoundTripChange(e.target.checked)}
+              className="w-4 h-4 accent-headline border-2 border-ink"
+            />
+            <span className="font-mono text-xs uppercase">Round trip</span>
+          </label>
+        </div>
       </div>
 
       {dndReady ? (
@@ -186,6 +198,8 @@ export default function StopList({
       )}
 
       <RouteMap stops={stops} />
+
+      <OpenInMapsMenu stops={stops} roundTrip={roundTrip} />
 
       <LocationPickerModal
         open={modalStopId !== null}

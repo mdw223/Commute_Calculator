@@ -85,3 +85,19 @@ export interface SavedPreferences {
   stops: Stop[];
   costSettings: CostSettings;
 }
+
+export interface SavedRouteResults {
+  breakdown: CostBreakdown;
+  worthIt: WorthItAnalysis;
+  calculatedAt: string;
+}
+
+export interface SavedRoute {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  stops: Stop[];
+  costSettings: CostSettings;
+  lastResults?: SavedRouteResults;
+}

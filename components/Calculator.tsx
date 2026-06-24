@@ -18,6 +18,7 @@ import type {
   CostBreakdown,
   CostSettings,
   RouteResult,
+  SavedRoute,
   Stop,
   WorthItAnalysis,
 } from "@/types";
@@ -25,6 +26,7 @@ import CostInputs from "./CostInputs";
 import FaqSection from "./FaqSection";
 import Hero from "./Hero";
 import ResultsPanel from "./ResultsPanel";
+import SavedRoutesModal from "./SavedRoutesModal";
 import StopList from "./StopList";
 import Ticker from "./Ticker";
 
@@ -52,6 +54,7 @@ export default function Calculator() {
   const [breakdown, setBreakdown] = useState<CostBreakdown | null>(null);
   const [worthIt, setWorthIt] = useState<WorthItAnalysis | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [savedRoutesOpen, setSavedRoutesOpen] = useState(false);
 
   /* eslint-disable react-hooks/set-state-in-effect -- hydrate preferences from localStorage once on mount */
   useEffect(() => {
@@ -135,6 +138,14 @@ export default function Calculator() {
     setError(null);
   }
 
+  function handleLoadRoute(route: SavedRoute) {
+    setStops(route.stops);
+    setCostSettings(migrateCostSettings(route.costSettings));
+    setBreakdown(route.lastResults?.breakdown ?? null);
+    setWorthIt(route.lastResults?.worthIt ?? null);
+    setError(null);
+  }
+
   return (
     <>
       <Ticker />
@@ -163,6 +174,7 @@ export default function Calculator() {
             onRoundTripChange={(roundTrip) =>
               setCostSettings((s) => ({ ...s, roundTrip }))
             }
+            onOpenMyRoutes={() => setSavedRoutesOpen(true)}
           />
 
           <hr className="border-ink border-t-2 border-dashed" />
@@ -206,6 +218,16 @@ export default function Calculator() {
       </main>
 
       <FaqSection />
+
+      <SavedRoutesModal
+        open={savedRoutesOpen}
+        stops={stops}
+        costSettings={costSettings}
+        breakdown={breakdown}
+        worthIt={worthIt}
+        onClose={() => setSavedRoutesOpen(false)}
+        onLoadRoute={handleLoadRoute}
+      />
 
       <footer className="border-t-4 border-ink py-6 text-center">
         <p className="font-mono text-xs text-muted uppercase tracking-widest">
