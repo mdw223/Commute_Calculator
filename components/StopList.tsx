@@ -1,9 +1,24 @@
 "use client";
 
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { Coordinates, Stop } from "@/types";
-import StopInput from "./StopInput";
+import StopRow from "./StopRow";
 
 const RouteMap = dynamic(() => import("./RouteMap"), { ssr: false });
 const LocationPickerModal = dynamic(() => import("./LocationPickerModal"), {
@@ -25,6 +40,13 @@ export default function StopList({
 }: StopListProps) {
   const [modalStopId, setModalStopId] = useState<string | null>(null);
   const [modalQuery, setModalQuery] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   function updateStop(
     id: string,
@@ -53,6 +75,17 @@ export default function StopList({
     onStopsChange(stops.filter((s) => s.id !== id));
   }
 
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = stops.findIndex((s) => s.id === active.id);
+    const newIndex = stops.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onStopsChange(arrayMove(stops, oldIndex, newIndex));
+  }
+
   function openMapPicker(stopId: string, initialQuery: string) {
     setModalStopId(stopId);
     setModalQuery(initialQuery);
@@ -66,10 +99,9 @@ export default function StopList({
     setModalQuery("");
   }
 
-  const start = stops[0];
-  const end = stops[stops.length - 1];
-  const intermediates = stops.slice(1, -1);
-  const startCoordinates = start?.coordinates ?? null;
+  const startCoordinates = stops[0]?.coordinates ?? null;
+  const canReorder = stops.length >= 2;
+  const canRemove = stops.length > 2;
 
   return (
     <div className="space-y-4">
@@ -88,47 +120,34 @@ export default function StopList({
         </label>
       </div>
 
-      {start && (
-        <StopInput
-          label="Start"
-          value={start.label}
-          onChange={(label, coords) => updateStop(start.id, label, coords)}
-          onMapPickRequest={(q) => openMapPicker(start.id, q)}
-          placeholder="Where you leaving from bestie?"
-        />
-      )}
-
-      {intermediates.map((stop, i) => (
-        <div key={stop.id} className="flex gap-2 items-end">
-          <div className="flex-1">
-            <StopInput
-              label={`Stop ${i + 1}`}
-              value={stop.label}
-              onChange={(label, coords) => updateStop(stop.id, label, coords)}
-              onMapPickRequest={(q) => openMapPicker(stop.id, q)}
-              placeholder="Detour? We don't judge."
-            />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={stops.map((s) => s.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-4">
+            {stops.map((stop, index) => (
+              <StopRow
+                key={stop.id}
+                stop={stop}
+                index={index}
+                total={stops.length}
+                canReorder={canReorder}
+                canRemove={canRemove}
+                onChange={(label, coords) =>
+                  updateStop(stop.id, label, coords)
+                }
+                onMapPickRequest={(q) => openMapPicker(stop.id, q)}
+                onRemove={() => removeStop(stop.id)}
+              />
+            ))}
           </div>
-          <button
-            type="button"
-            onClick={() => removeStop(stop.id)}
-            className="shrink-0 border-3 border-ink bg-headline text-newsprint px-3 py-2 font-mono text-xs uppercase hover:bg-ink transition-colors"
-            aria-label="Remove stop"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
-
-      {end && stops.length > 1 && (
-        <StopInput
-          label="Destination"
-          value={end.label}
-          onChange={(label, coords) => updateStop(end.id, label, coords)}
-          onMapPickRequest={(q) => openMapPicker(end.id, q)}
-          placeholder="Where you tryna go?"
-        />
-      )}
+        </SortableContext>
+      </DndContext>
 
       {stops.length < 10 && (
         <button
