@@ -1,23 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  MapContainer,
-  Marker,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet";
 import { POI_CATEGORIES } from "@/lib/poiCategories";
+import { buildActiveSearchQuery } from "@/lib/externalMaps";
 import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
   fixLeafletIcons,
   formatDistanceMeters,
-  OSM_ATTRIBUTION,
-  OSM_TILE_URL,
 } from "@/lib/leaflet";
 import type { Coordinates, PoiSuggestion } from "@/types";
+import ExternalMapsFallback from "./ExternalMapsFallback";
+import MapPanelToggle from "./MapPanelToggle";
 
 interface LocationPickerModalProps {
   open: boolean;
@@ -25,44 +19,6 @@ interface LocationPickerModalProps {
   startCoordinates: Coordinates | null;
   onClose: () => void;
   onSelect: (label: string, coordinates: Coordinates) => void;
-}
-
-function toLatLng(coords: Coordinates): [number, number] {
-  return [coords[1], coords[0]];
-}
-
-function MapEvents({
-  onPan,
-}: {
-  onPan: (center: Coordinates) => void;
-}) {
-  useMapEvents({
-    moveend(e) {
-      const c = e.target.getCenter();
-      onPan([c.lng, c.lat]);
-    },
-  });
-  return null;
-}
-
-function MapViewSync({
-  center,
-  zoom,
-}: {
-  center: Coordinates;
-  zoom: number;
-}) {
-  const map = useMap();
-  const prev = useRef<string>("");
-
-  useEffect(() => {
-    const key = `${center[0]},${center[1]},${zoom}`;
-    if (prev.current === key) return;
-    prev.current = key;
-    map.setView(toLatLng(center), zoom);
-  }, [center, zoom, map]);
-
-  return null;
 }
 
 function LocationPickerModalContent({
@@ -84,6 +40,7 @@ function LocationPickerModalContent({
     () => !startCoordinates && !hasGeolocation
   );
   const [userPanned, setUserPanned] = useState(false);
+  const [googlePreviewOpen, setGooglePreviewOpen] = useState(false);
   const [searchCenter, setSearchCenter] = useState<Coordinates>(() =>
     startCoordinates ?? DEFAULT_MAP_CENTER
   );
@@ -91,6 +48,10 @@ function LocationPickerModalContent({
     startCoordinates ? 13 : DEFAULT_MAP_ZOOM
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const hasActiveSearch =
+    query.trim().length > 0 || selectedCategories.length > 0;
+  const activeQuery = buildActiveSearchQuery(query, selectedCategories);
 
   useEffect(() => {
     fixLeafletIcons();
@@ -192,6 +153,13 @@ function LocationPickerModalContent({
     };
   }, [canSearch, fetchPois]);
 
+  const showExternalFallback =
+    !loading &&
+    !error &&
+    canSearch &&
+    results.length === 0 &&
+    hasActiveSearch;
+
   function toggleCategory(id: string) {
     setSelectedCategories((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
@@ -270,13 +238,18 @@ function LocationPickerModalContent({
             {error && (
               <p className="px-4 py-3 text-sm text-headline font-mono">{error}</p>
             )}
-            {!loading && !error && results.length === 0 && canSearch && (
-              <p className="px-4 py-3 text-sm text-muted">
-                {query.trim() || selectedCategories.length
-                  ? "No places found. Try a different search or pan the map."
-                  : "Type a name or pick a category to search nearby."}
-              </p>
+            {showExternalFallback && (
+              <ExternalMapsFallback query={activeQuery} />
             )}
+            {!loading &&
+              !error &&
+              results.length === 0 &&
+              canSearch &&
+              !hasActiveSearch && (
+                <p className="px-4 py-3 text-sm text-muted">
+                  Type a name or pick a category to search nearby.
+                </p>
+              )}
             <ul className="overflow-y-auto flex-1">
               {results.map((poi, i) => (
                 <li key={`${poi.label}-${i}`}>
@@ -302,29 +275,20 @@ function LocationPickerModalContent({
             </ul>
           </div>
 
-          <div className="md:w-[60%] min-h-[250px] md:min-h-[400px] flex-1">
-            <MapContainer
-              center={toLatLng(searchCenter)}
-              zoom={mapZoom}
-              className="h-full w-full"
-              scrollWheelZoom
-            >
-              <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
-              <MapViewSync center={searchCenter} zoom={mapZoom} />
-              <MapEvents onPan={handlePan} />
-              {results.map((poi, i) => (
-                <Marker
-                  key={`${poi.coordinates[0]}-${poi.coordinates[1]}-${i}`}
-                  position={toLatLng(poi.coordinates)}
-                  eventHandlers={{
-                    click: () => handleSelect(poi),
-                    mouseover: () => setHighlighted(i),
-                    mouseout: () => setHighlighted(null),
-                  }}
-                  opacity={highlighted === null || highlighted === i ? 1 : 0.5}
-                />
-              ))}
-            </MapContainer>
+          <div className="md:w-[60%] flex-1">
+            <MapPanelToggle
+              googlePreviewOpen={googlePreviewOpen}
+              onGooglePreviewChange={setGooglePreviewOpen}
+              activeQuery={activeQuery}
+              hasActiveSearch={hasActiveSearch}
+              searchCenter={searchCenter}
+              mapZoom={mapZoom}
+              results={results}
+              highlighted={highlighted}
+              onHighlight={setHighlighted}
+              onSelect={handleSelect}
+              onPan={handlePan}
+            />
           </div>
         </div>
       </div>

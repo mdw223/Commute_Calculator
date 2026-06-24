@@ -16,9 +16,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useSyncExternalStore, useState } from "react";
 import type { Coordinates, Stop } from "@/types";
-import StopRow from "./StopRow";
+import StopRow, { StopRowStatic } from "./StopRow";
 
 const RouteMap = dynamic(() => import("./RouteMap"), { ssr: false });
 const LocationPickerModal = dynamic(() => import("./LocationPickerModal"), {
@@ -32,6 +32,8 @@ interface StopListProps {
   onRoundTripChange: (value: boolean) => void;
 }
 
+const subscribe = () => () => {};
+
 export default function StopList({
   stops,
   roundTrip,
@@ -40,6 +42,7 @@ export default function StopList({
 }: StopListProps) {
   const [modalStopId, setModalStopId] = useState<string | null>(null);
   const [modalQuery, setModalQuery] = useState("");
+  const dndReady = useSyncExternalStore(subscribe, () => true, () => false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -120,35 +123,57 @@ export default function StopList({
         </label>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={stops.map((s) => s.id)}
-          strategy={verticalListSortingStrategy}
+      {dndReady ? (
+        <DndContext
+          id="route-stops"
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          <div className="space-y-4">
-            {stops.map((stop, index) => (
-              <StopRow
-                key={stop.id}
-                stop={stop}
-                index={index}
-                total={stops.length}
-                canReorder={canReorder}
-                canRemove={canRemove}
-                geocodeFocus={startCoordinates}
-                onChange={(label, coords) =>
-                  updateStop(stop.id, label, coords)
-                }
-                onMapPickRequest={(q) => openMapPicker(stop.id, q)}
-                onRemove={() => removeStop(stop.id)}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+          <SortableContext
+            items={stops.map((s) => s.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4">
+              {stops.map((stop, index) => (
+                <StopRow
+                  key={stop.id}
+                  stop={stop}
+                  index={index}
+                  total={stops.length}
+                  canReorder={canReorder}
+                  canRemove={canRemove}
+                  geocodeFocus={startCoordinates}
+                  onChange={(label, coords) =>
+                    updateStop(stop.id, label, coords)
+                  }
+                  onMapPickRequest={(q) => openMapPicker(stop.id, q)}
+                  onRemove={() => removeStop(stop.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="space-y-4">
+          {stops.map((stop, index) => (
+            <StopRowStatic
+              key={stop.id}
+              stop={stop}
+              index={index}
+              total={stops.length}
+              canReorder={canReorder}
+              canRemove={canRemove}
+              geocodeFocus={startCoordinates}
+              onChange={(label, coords) =>
+                updateStop(stop.id, label, coords)
+              }
+              onMapPickRequest={(q) => openMapPicker(stop.id, q)}
+              onRemove={() => removeStop(stop.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {stops.length < 10 && (
         <button

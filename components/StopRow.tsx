@@ -18,6 +18,53 @@ interface StopRowProps {
   onRemove: () => void;
 }
 
+export function StopRowStatic({
+  stop,
+  index,
+  total,
+  canReorder,
+  canRemove,
+  geocodeFocus,
+  onChange,
+  onMapPickRequest,
+  onRemove,
+}: StopRowProps) {
+  return (
+    <div className="flex gap-2 items-end">
+      {canReorder && (
+        <div
+          className="shrink-0 border-3 border-ink bg-surface px-2 py-2 font-mono text-sm text-muted self-end mb-2"
+          aria-hidden
+        >
+          ⋮⋮
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <StopInput
+          label={getStopLabel(index, total)}
+          value={stop.label}
+          onChange={onChange}
+          onMapPickRequest={onMapPickRequest}
+          geocodeFocus={geocodeFocus}
+          placeholder={getStopPlaceholder(index, total)}
+        />
+      </div>
+
+      {canRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="shrink-0 border-3 border-ink bg-headline text-newsprint px-3 py-2 font-mono text-xs uppercase hover:bg-ink transition-colors"
+          aria-label="Remove stop"
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function StopRow({
   stop,
   index,
