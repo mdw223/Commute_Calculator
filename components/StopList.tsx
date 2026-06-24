@@ -138,6 +138,7 @@ export default function StopList({
                 total={stops.length}
                 canReorder={canReorder}
                 canRemove={canRemove}
+                geocodeFocus={startCoordinates}
                 onChange={(label, coords) =>
                   updateStop(stop.id, label, coords)
                 }

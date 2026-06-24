@@ -12,6 +12,7 @@ interface StopRowProps {
   total: number;
   canReorder: boolean;
   canRemove: boolean;
+  geocodeFocus?: Coordinates | null;
   onChange: (label: string, coordinates: Coordinates | null) => void;
   onMapPickRequest: (initialQuery: string) => void;
   onRemove: () => void;
@@ -23,6 +24,7 @@ export default function StopRow({
   total,
   canReorder,
   canRemove,
+  geocodeFocus,
   onChange,
   onMapPickRequest,
   onRemove,
@@ -67,6 +69,7 @@ export default function StopRow({
           value={stop.label}
           onChange={onChange}
           onMapPickRequest={onMapPickRequest}
+          geocodeFocus={geocodeFocus}
           placeholder={getStopPlaceholder(index, total)}
         />
       </div>

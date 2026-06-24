@@ -8,6 +8,7 @@ interface StopInputProps {
   value: string;
   onChange: (label: string, coordinates: Coordinates | null) => void;
   onMapPickRequest?: (initialQuery: string) => void;
+  geocodeFocus?: Coordinates | null;
   placeholder?: string;
 }
 
@@ -16,6 +17,7 @@ export default function StopInput({
   value,
   onChange,
   onMapPickRequest,
+  geocodeFocus,
   placeholder = "Start typing an address…",
 }: StopInputProps) {
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
@@ -41,10 +43,14 @@ export default function StopInput({
     }
     setLoading(true);
     try {
+      const payload: { query: string; focus?: Coordinates } = { query: text };
+      if (geocodeFocus) {
+        payload.focus = geocodeFocus;
+      }
       const res = await fetch("/api/geocode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: text }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
@@ -56,7 +62,7 @@ export default function StopInput({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [geocodeFocus]);
 
   function handleInputChange(text: string) {
     onChange(text, null);

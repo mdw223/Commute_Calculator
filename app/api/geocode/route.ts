@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { geocodeAutocomplete } from "@/lib/ors";
+import type { Coordinates } from "@/types";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.json()) as {
+      query?: string;
+      focus?: Coordinates;
+    };
     const query = body.query?.trim();
 
     if (!query || query.length < 2) {
@@ -13,7 +17,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const suggestions = await geocodeAutocomplete(query);
+    const focus =
+      body.focus &&
+      Array.isArray(body.focus) &&
+      body.focus.length === 2
+        ? body.focus
+        : undefined;
+
+    const suggestions = await geocodeAutocomplete(query, focus);
     return NextResponse.json({ suggestions });
   } catch (error) {
     const message =

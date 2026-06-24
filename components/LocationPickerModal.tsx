@@ -134,7 +134,10 @@ function LocationPickerModalContent({
         const res = await fetch("/api/geocode", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: query.trim() }),
+          body: JSON.stringify({
+            query: query.trim(),
+            focus: searchCenter,
+          }),
         });
         const data = await res.json();
         if (!res.ok) {

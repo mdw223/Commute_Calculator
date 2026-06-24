@@ -21,13 +21,20 @@ export interface OrsGeocodeFeature {
 }
 
 export async function geocodeAutocomplete(
-  query: string
+  query: string,
+  focus?: Coordinates
 ): Promise<{ label: string; coordinates: Coordinates }[]> {
   const apiKey = getApiKey();
   const url = new URL(`${ORS_BASE}/geocode/autocomplete`);
   url.searchParams.set("api_key", apiKey);
   url.searchParams.set("text", query);
   url.searchParams.set("size", "5");
+
+  if (focus) {
+    const [lng, lat] = focus;
+    url.searchParams.set("focus.point.lon", String(lng));
+    url.searchParams.set("focus.point.lat", String(lat));
+  }
 
   const res = await fetch(url.toString());
   if (!res.ok) {
