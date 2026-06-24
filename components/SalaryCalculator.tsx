@@ -1,13 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { formatCurrency } from "@/lib/calculations";
 import {
   amountsFromField,
   amountsToStrings,
   estimateEffectiveTaxRate,
   parseSalaryInput,
-  takeHomeAmount,
 } from "@/lib/salary";
 import {
   clearSalaryState,
@@ -173,7 +171,7 @@ export default function SalaryCalculator() {
   }
 
   return (
-    <div className="border-4 border-ink bg-surface p-6 shadow-brutal space-y-6 min-w-0 max-w-full overflow-hidden">
+    <div className="border-4 border-ink bg-surface p-6 shadow-brutal space-y-6 min-w-0 max-w-full">
       <div className="flex items-center justify-between gap-3">
         <p className="font-mono text-xs uppercase tracking-widest text-headline">
           ★ Your Paycheck, Decoded ★
@@ -218,12 +216,6 @@ export default function SalaryCalculator() {
 
       <div className="grid sm:grid-cols-2 gap-4 min-w-0">
         {FIELDS.map((field) => {
-          const gross = parseSalaryInput(state.values[field]);
-          const net =
-            gross != null && state.showTakeHome
-              ? takeHomeAmount(gross, state.taxRate)
-              : null;
-
           return (
             <div key={field} className="min-w-0">
               <label className="block font-mono text-xs uppercase tracking-wider mb-1">
@@ -242,11 +234,6 @@ export default function SalaryCalculator() {
                   className="w-full border-3 border-ink bg-surface pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
                 />
               </div>
-              {net != null && (
-                <p className="mt-1 text-xs text-muted font-mono">
-                  Take-home: {formatCurrency(net)}
-                </p>
-              )}
             </div>
           );
         })}
@@ -264,35 +251,42 @@ export default function SalaryCalculator() {
         </span>
       </label>
 
-      {state.showTakeHome && (
-        <div className="space-y-3 border-l-4 border-headline pl-3 min-w-0 max-w-full">
-          <div>
-            <label className="block font-mono text-xs uppercase tracking-wider mb-1">
-              Estimated tax rate (%)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={0.1}
-              value={state.taxRate}
-              onChange={(e) => handleTaxRateChange(e.target.value)}
-              className="w-full max-w-xs border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleResetTaxRate}
-            className="border-3 border-ink bg-surface px-3 py-1 font-mono text-xs uppercase hover:bg-cta/20 transition-colors"
-          >
-            Reset to bracket estimate
-          </button>
-          <p className="text-sm text-muted break-words">
-            Rough US federal single-filer estimate from your yearly gross. Not
-            tax advice — adjust for your real situation.
-          </p>
+      <div
+        className={`space-y-3 border-l-4 border-headline pl-3 min-w-0 ${
+          state.showTakeHome ? "" : "invisible pointer-events-none select-none"
+        }`}
+        aria-hidden={!state.showTakeHome}
+      >
+        <div>
+          <label className="block font-mono text-xs uppercase tracking-wider mb-1">
+            Estimated tax rate (%)
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step={0.1}
+            value={state.taxRate}
+            onChange={(e) => handleTaxRateChange(e.target.value)}
+            disabled={!state.showTakeHome}
+            tabIndex={state.showTakeHome ? 0 : -1}
+            className="w-full max-w-xs border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline disabled:opacity-100"
+          />
         </div>
-      )}
+        <button
+          type="button"
+          onClick={handleResetTaxRate}
+          disabled={!state.showTakeHome}
+          tabIndex={state.showTakeHome ? 0 : -1}
+          className="border-3 border-ink bg-surface px-3 py-1 font-mono text-xs uppercase hover:bg-cta/20 transition-colors disabled:opacity-100"
+        >
+          Reset to bracket estimate
+        </button>
+        <p className="text-sm text-muted break-words min-w-0">
+          Rough US federal single-filer estimate from your yearly gross. Not
+          tax advice — adjust for your real situation.
+        </p>
+      </div>
     </div>
   );
 }
