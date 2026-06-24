@@ -1,26 +1,104 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --newsprint: #fffbeb;
+  --ink: #1a1a1a;
+  --headline: #dc2626;
+  --cta: #ccff00;
+  --surface: #ffffff;
+  --muted: #525252;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-newsprint: var(--newsprint);
+  --color-ink: var(--ink);
+  --color-headline: var(--headline);
+  --color-cta: var(--cta);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --font-display: var(--font-libre-baskerville);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains-mono);
+  --shadow-brutal: 4px 4px 0 0 var(--ink);
+  --shadow-brutal-sm: 2px 2px 0 0 var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--newsprint);
+  color: var(--ink);
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+}
+
+.font-mono {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+.border-3 {
+  border-width: 3px;
+}
+
+.shadow-brutal {
+  box-shadow: var(--shadow-brutal);
+}
+
+.shadow-brutal-sm {
+  box-shadow: var(--shadow-brutal-sm);
+}
+
+.ticker-wrap {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 2%,
+    black 98%,
+    transparent
+  );
+}
+
+.ticker-text {
+  display: inline-block;
+  animation: ticker 40s linear infinite;
+}
+
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-text {
+    animation: none;
+    white-space: normal;
+  }
+}
+
+input[type="range"] {
+  height: 8px;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--headline);
+  border: 2px solid var(--ink);
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--headline);
+  border: 2px solid var(--ink);
+  cursor: pointer;
 }

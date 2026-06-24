@@ -1,0 +1,117 @@
+"use client";
+
+import type { Stop } from "@/types";
+import StopInput from "./StopInput";
+
+interface StopListProps {
+  stops: Stop[];
+  roundTrip: boolean;
+  onStopsChange: (stops: Stop[]) => void;
+  onRoundTripChange: (value: boolean) => void;
+}
+
+export default function StopList({
+  stops,
+  roundTrip,
+  onStopsChange,
+  onRoundTripChange,
+}: StopListProps) {
+  function updateStop(
+    id: string,
+    label: string,
+    coordinates: [number, number] | null
+  ) {
+    onStopsChange(
+      stops.map((s) => (s.id === id ? { ...s, label, coordinates } : s))
+    );
+  }
+
+  function addStop() {
+    if (stops.length >= 10) return;
+    const newStop: Stop = {
+      id: crypto.randomUUID(),
+      label: "",
+      coordinates: null,
+    };
+    const updated = [...stops];
+    updated.splice(stops.length - 1, 0, newStop);
+    onStopsChange(updated);
+  }
+
+  function removeStop(id: string) {
+    if (stops.length <= 2) return;
+    onStopsChange(stops.filter((s) => s.id !== id));
+  }
+
+  const start = stops[0];
+  const end = stops[stops.length - 1];
+  const intermediates = stops.slice(1, -1);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-xs uppercase tracking-widest text-headline">
+          ★ Classified ★ Route Evidence
+        </p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={roundTrip}
+            onChange={(e) => onRoundTripChange(e.target.checked)}
+            className="w-4 h-4 accent-headline border-2 border-ink"
+          />
+          <span className="font-mono text-xs uppercase">Round trip</span>
+        </label>
+      </div>
+
+      {start && (
+        <StopInput
+          label="Start"
+          value={start.label}
+          onChange={(label, coords) => updateStop(start.id, label, coords)}
+          placeholder="Where you leaving from bestie?"
+        />
+      )}
+
+      {intermediates.map((stop, i) => (
+        <div key={stop.id} className="flex gap-2 items-end">
+          <div className="flex-1">
+            <StopInput
+              label={`Stop ${i + 1}`}
+              value={stop.label}
+              onChange={(label, coords) => updateStop(stop.id, label, coords)}
+              placeholder="Detour? We don't judge."
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => removeStop(stop.id)}
+            className="shrink-0 border-3 border-ink bg-headline text-newsprint px-3 py-2 font-mono text-xs uppercase hover:bg-ink transition-colors"
+            aria-label="Remove stop"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+
+      {end && stops.length > 1 && (
+        <StopInput
+          label="Destination"
+          value={end.label}
+          onChange={(label, coords) => updateStop(end.id, label, coords)}
+          placeholder="Where you tryna go?"
+        />
+      )}
+
+      {stops.length < 10 && (
+        <button
+          type="button"
+          onClick={addStop}
+          className="w-full border-3 border-dashed border-ink bg-transparent py-2 font-mono text-xs uppercase text-muted hover:bg-cta/20 transition-colors"
+        >
+          + Add stop (max 10)
+        </button>
+      )}
+    </div>
+  );
+}
