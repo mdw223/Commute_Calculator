@@ -27,6 +27,7 @@ import FaqSection from "./FaqSection";
 import Hero from "./Hero";
 import ResultsPanel from "./ResultsPanel";
 import SavedRoutesModal from "./SavedRoutesModal";
+import ShareBar from "./share/ShareBar";
 import SiteFooter from "./SiteFooter";
 import SiteNav from "./SiteNav";
 import StopList from "./StopList";
@@ -222,6 +223,8 @@ export default function Calculator() {
 
       <FaqSection />
 
+      {breakdown && worthIt && <div className="h-24" aria-hidden />}
+
       <SavedRoutesModal
         open={savedRoutesOpen}
         stops={stops}
@@ -233,6 +236,17 @@ export default function Calculator() {
       />
 
       <SiteFooter />
+
+      {breakdown && worthIt && (
+        <ShareBar
+          key={JSON.stringify({ stops, breakdown, worthIt, settings: costSettings })}
+          variant="commute"
+          stops={stops}
+          breakdown={breakdown}
+          worthIt={worthIt}
+          settings={costSettings}
+        />
+      )}
     </>
   );
 }

@@ -15,7 +15,9 @@ import {
   loadSalaryState,
   saveSalaryState,
 } from "@/lib/salaryStorage";
+import { hasShareableSalaryData } from "@/lib/shareText";
 import type { SalaryCalculatorState, SalaryField } from "@/types";
+import ShareBar from "./share/ShareBar";
 
 const FIELD_LABELS: Record<SalaryField, string> = {
   hourly: "Hourly rate",
@@ -213,7 +215,10 @@ export default function SalaryCalculator() {
     setWeeksInput(String(DEFAULT_SALARY_STATE.weeksPerYear));
   }
 
+  const canShare = hasShareableSalaryData(state);
+
   return (
+    <>
     <div className="border-4 border-ink bg-surface p-6 shadow-brutal space-y-6 min-w-0 max-w-full">
       <div className="flex items-center justify-between gap-3">
         <p className="font-mono text-xs uppercase tracking-widest text-headline">
@@ -342,5 +347,13 @@ export default function SalaryCalculator() {
         </p>
       </div>
     </div>
+
+    {canShare && (
+      <>
+        <div className="h-24" aria-hidden />
+        <ShareBar key={JSON.stringify(state)} variant="salary" state={state} />
+      </>
+    )}
+    </>
   );
 }
