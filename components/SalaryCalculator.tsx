@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { formatCurrency } from "@/lib/calculations";
 import {
   amountsFromField,
   amountsToStrings,
   estimateEffectiveTaxRate,
   parseSalaryInput,
+  takeHomeAmount,
 } from "@/lib/salary";
 import {
   clearSalaryState,
@@ -39,13 +41,26 @@ function getYearlyFromState(state: SalaryCalculatorState): number | null {
   return amounts?.yearly ?? null;
 }
 
+function isPartialDecimal(raw: string): boolean {
+  return raw === "" || /^\d*\.?\d*$/.test(raw);
+}
+
+function isPartialInteger(raw: string): boolean {
+  return raw === "" || /^\d+$/.test(raw);
+}
+
 export default function SalaryCalculator() {
   const [state, setState] = useState<SalaryCalculatorState>(DEFAULT_SALARY_STATE);
   const [hydrated, setHydrated] = useState(false);
+  const [hoursInput, setHoursInput] = useState(String(DEFAULT_SALARY_STATE.hoursPerWeek));
+  const [weeksInput, setWeeksInput] = useState(String(DEFAULT_SALARY_STATE.weeksPerYear));
 
   /* eslint-disable react-hooks/set-state-in-effect -- hydrate salary state from localStorage once on mount */
   useEffect(() => {
-    setState(loadSalaryState());
+    const loaded = loadSalaryState();
+    setState(loaded);
+    setHoursInput(String(loaded.hoursPerWeek));
+    setWeeksInput(String(loaded.weeksPerYear));
     setHydrated(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -112,19 +127,45 @@ export default function SalaryCalculator() {
   }
 
   function handleHoursPerWeekChange(raw: string) {
+    if (!isPartialDecimal(raw)) return;
+    setHoursInput(raw);
     const value = parseFloat(raw);
-    setState((prev) => {
-      const hoursPerWeek = Number.isFinite(value) && value > 0 ? value : prev.hoursPerWeek;
-      return recomputeFromSettings({ ...prev, hoursPerWeek });
-    });
+    if (raw !== "" && Number.isFinite(value) && value > 0) {
+      setState((prev) => recomputeFromSettings({ ...prev, hoursPerWeek: value }));
+    }
+  }
+
+  function handleHoursPerWeekBlur() {
+    const value = parseFloat(hoursInput);
+    if (hoursInput === "" || !Number.isFinite(value) || value <= 0) {
+      setHoursInput(String(state.hoursPerWeek));
+      return;
+    }
+    setHoursInput(String(value));
+    if (value !== state.hoursPerWeek) {
+      setState((prev) => recomputeFromSettings({ ...prev, hoursPerWeek: value }));
+    }
   }
 
   function handleWeeksPerYearChange(raw: string) {
+    if (!isPartialInteger(raw)) return;
+    setWeeksInput(raw);
     const value = parseFloat(raw);
-    setState((prev) => {
-      const weeksPerYear = Number.isFinite(value) && value > 0 ? value : prev.weeksPerYear;
-      return recomputeFromSettings({ ...prev, weeksPerYear });
-    });
+    if (raw !== "" && Number.isFinite(value) && value > 0) {
+      setState((prev) => recomputeFromSettings({ ...prev, weeksPerYear: value }));
+    }
+  }
+
+  function handleWeeksPerYearBlur() {
+    const value = parseFloat(weeksInput);
+    if (weeksInput === "" || !Number.isFinite(value) || value <= 0) {
+      setWeeksInput(String(state.weeksPerYear));
+      return;
+    }
+    setWeeksInput(String(value));
+    if (value !== state.weeksPerYear) {
+      setState((prev) => recomputeFromSettings({ ...prev, weeksPerYear: value }));
+    }
   }
 
   function handleTakeHomeToggle(checked: boolean) {
@@ -168,6 +209,8 @@ export default function SalaryCalculator() {
   function handleClear() {
     clearSalaryState();
     setState(DEFAULT_SALARY_STATE);
+    setHoursInput(String(DEFAULT_SALARY_STATE.hoursPerWeek));
+    setWeeksInput(String(DEFAULT_SALARY_STATE.weeksPerYear));
   }
 
   return (
@@ -191,11 +234,11 @@ export default function SalaryCalculator() {
             Hours / week
           </label>
           <input
-            type="number"
-            min={0.5}
-            step={0.5}
-            value={state.hoursPerWeek}
+            type="text"
+            inputMode="decimal"
+            value={hoursInput}
             onChange={(e) => handleHoursPerWeekChange(e.target.value)}
+            onBlur={handleHoursPerWeekBlur}
             className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
           />
         </div>
@@ -204,11 +247,11 @@ export default function SalaryCalculator() {
             Weeks / year
           </label>
           <input
-            type="number"
-            min={1}
-            step={1}
-            value={state.weeksPerYear}
+            type="text"
+            inputMode="numeric"
+            value={weeksInput}
             onChange={(e) => handleWeeksPerYearChange(e.target.value)}
+            onBlur={handleWeeksPerYearBlur}
             className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
           />
         </div>
@@ -216,6 +259,12 @@ export default function SalaryCalculator() {
 
       <div className="grid sm:grid-cols-2 gap-4 min-w-0">
         {FIELDS.map((field) => {
+          const gross = parseSalaryInput(state.values[field]);
+          const net =
+            gross != null && state.showTakeHome
+              ? takeHomeAmount(gross, state.taxRate)
+              : null;
+
           return (
             <div key={field} className="min-w-0">
               <label className="block font-mono text-xs uppercase tracking-wider mb-1">
@@ -234,6 +283,11 @@ export default function SalaryCalculator() {
                   className="w-full border-3 border-ink bg-surface pl-7 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
                 />
               </div>
+              {net != null && (
+                <p className="mt-1 text-xs text-muted font-mono">
+                  Take-home: {formatCurrency(net)}
+                </p>
+              )}
             </div>
           );
         })}
