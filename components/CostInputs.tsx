@@ -52,9 +52,13 @@ export default function CostInputs({ settings, onChange }: CostInputsProps) {
           type="number"
           min={1}
           max={200}
-          value={settings.mpg}
-          onChange={(e) => update("mpg", parseFloat(e.target.value) || 25)}
+          value={settings.mpg || ""}
+          onChange={(e) => update("mpg", parseFloat(e.target.value) || 0)}
+          onBlur={() => {
+            if (settings.mpg < 1) update("mpg", 25);
+          }}
           className="w-full border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
+          placeholder="25"
         />
       </div>
 
@@ -230,14 +234,20 @@ export default function CostInputs({ settings, onChange }: CostInputsProps) {
             type="number"
             min={1}
             max={999}
-            value={settings.frequency.count}
+            value={settings.frequency.count || ""}
             onChange={(e) =>
               update("frequency", {
                 ...settings.frequency,
-                count: parseInt(e.target.value, 10) || 1,
+                count: parseInt(e.target.value, 10) || 0,
               })
             }
+            onBlur={() => {
+              if (settings.frequency.count < 1) {
+                update("frequency", { ...settings.frequency, count: 1 });
+              }
+            }}
             className="w-20 border-3 border-ink bg-surface px-3 py-2 focus:outline-none focus:ring-2 focus:ring-headline"
+            placeholder="1"
           />
           <span className="self-center text-sm text-muted">times per</span>
           {(["day", "week", "month"] as FrequencyUnit[]).map((unit) => (
