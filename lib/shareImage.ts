@@ -2,9 +2,26 @@ import { getFontEmbedCSS, toBlob } from "html-to-image";
 
 export const SHARE_IMAGE_FILENAME = "gas-in-this-economy-results.png";
 
-export interface ShareImageResult {
-  blob: Blob;
-  imageCopied: boolean;
+const CAPTURE_TIMEOUT_MS = 15_000;
+const FONT_EMBED_TIMEOUT_MS = 3_000;
+const CLIPBOARD_TIMEOUT_MS = 2_000;
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
 }
 
 interface SavedCaptureStyles {
@@ -52,7 +69,25 @@ async function waitForPaint(): Promise<void> {
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
-  await new Promise<void>((resolve) => setTimeout(resolve, 50));
+  await new Promise<void>((resolve) =>
+    setTimeout(resolve, isMobileDevice() ? 150 : 50)
+  );
+}
+
+async function loadFontEmbedCSS(element: HTMLElement): Promise<string | undefined> {
+  if (isMobileDevice()) {
+    return undefined;
+  }
+
+  try {
+    return await withTimeout(
+      getFontEmbedCSS(element),
+      FONT_EMBED_TIMEOUT_MS,
+      "Font embed timed out"
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 export async function captureElementAsPng(element: HTMLElement): Promise<Blob> {
@@ -65,19 +100,22 @@ export async function captureElementAsPng(element: HTMLElement): Promise<Blob> {
   await waitForPaint();
 
   try {
-    let fontEmbedCSS: string | undefined;
-    try {
-      fontEmbedCSS = await getFontEmbedCSS(element);
-    } catch {
-      fontEmbedCSS = undefined;
-    }
+    const fontEmbedCSS = await loadFontEmbedCSS(element);
+    const pixelRatio = isMobileDevice()
+      ? 1
+      : Math.min(2, window.devicePixelRatio || 1);
 
-    const blob = await toBlob(element, {
-      cacheBust: true,
-      pixelRatio: 2,
-      backgroundColor: "#fffbeb",
-      ...(fontEmbedCSS ? { fontEmbedCSS } : {}),
-    });
+    const blob = await withTimeout(
+      toBlob(element, {
+        cacheBust: true,
+        pixelRatio,
+        backgroundColor: "#fffbeb",
+        skipFonts: !fontEmbedCSS,
+        ...(fontEmbedCSS ? { fontEmbedCSS } : {}),
+      }),
+      CAPTURE_TIMEOUT_MS,
+      "Screenshot capture timed out"
+    );
 
     if (!blob) {
       throw new Error("Screenshot capture returned no image data");
@@ -108,9 +146,11 @@ export async function copyImageToClipboard(blob: Blob): Promise<boolean> {
   }
 
   try {
-    await navigator.clipboard.write([
-      new ClipboardItem({ "image/png": blob }),
-    ]);
+    await withTimeout(
+      navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]),
+      CLIPBOARD_TIMEOUT_MS,
+      "Image clipboard timed out"
+    );
     return true;
   } catch {
     return false;
@@ -123,20 +163,21 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 
   try {
-    await navigator.clipboard.writeText(text);
+    await withTimeout(
+      navigator.clipboard.writeText(text),
+      CLIPBOARD_TIMEOUT_MS,
+      "Text clipboard timed out"
+    );
     return true;
   } catch {
     return false;
   }
 }
 
-export async function prepareShareImage(
-  element: HTMLElement
-): Promise<ShareImageResult> {
+export async function prepareShareImage(element: HTMLElement): Promise<Blob> {
   const blob = await captureElementAsPng(element);
   downloadBlob(blob, SHARE_IMAGE_FILENAME);
-  const imageCopied = await copyImageToClipboard(blob);
-  return { blob, imageCopied };
+  return blob;
 }
 
 export function canNativeShareFile(blob: Blob): boolean {

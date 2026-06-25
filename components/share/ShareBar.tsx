@@ -5,6 +5,7 @@ import CommuteShareCard from "@/components/share/CommuteShareCard";
 import SalaryShareCard from "@/components/share/SalaryShareCard";
 import {
   canNativeShareFile,
+  copyImageToClipboard,
   copyTextToClipboard,
   nativeShareWithFile,
   prepareShareImage,
@@ -37,7 +38,7 @@ type ShareBarProps =
       state: SalaryCalculatorState;
     };
 
-type ShareStep = "idle" | "preparing" | "ready";
+type ShareStep = "idle" | "preparing" | "ready" | "error";
 
 const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   twitter: "X / Twitter",
@@ -75,6 +76,8 @@ export default function ShareBar(props: ShareBarProps) {
     if (!cardRef.current) return;
 
     setStep("preparing");
+    setImageCopied(false);
+    setTextCopied(false);
     const text = buildText();
     setShareText(text);
 
@@ -84,18 +87,15 @@ export default function ShareBar(props: ShareBarProps) {
     });
 
     try {
-      const { blob, imageCopied: copied } = await prepareShareImage(
-        cardRef.current
-      );
+      const blob = await prepareShareImage(cardRef.current);
       setImageBlob(blob);
-      setImageCopied(copied);
       setNativeShareAvailable(canNativeShareFile(blob));
-
-      const copiedText = await copyTextToClipboard(text);
-      setTextCopied(copiedText);
       setStep("ready");
+
+      void copyImageToClipboard(blob).then(setImageCopied);
+      void copyTextToClipboard(text).then(setTextCopied);
     } catch {
-      setStep("idle");
+      setStep("error");
     }
   }, [buildText]);
 
@@ -125,7 +125,7 @@ export default function ShareBar(props: ShareBarProps) {
       <div
         ref={cardRef}
         aria-hidden
-        className="pointer-events-none fixed top-0 left-0 opacity-0 -z-10"
+        className="pointer-events-none fixed top-0 -left-[10000px] w-[600px] -z-10"
       >
         {props.variant === "commute" ? (
           <CommuteShareCard
@@ -140,8 +140,8 @@ export default function ShareBar(props: ShareBarProps) {
         )}
       </div>
 
-      <div className="fixed bottom-0 inset-x-0 z-50 border-t-4 border-ink bg-surface shadow-brutal">
-        <div className="max-w-4xl mx-auto px-4 py-3 space-y-3">
+      <div className="fixed bottom-0 inset-x-0 z-50 border-t-4 border-ink bg-surface shadow-brutal pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-4xl mx-auto px-4 py-3 space-y-3 max-h-[70vh] overflow-y-auto">
           {step === "idle" && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               {props.variant === "commute" && (
@@ -171,6 +171,31 @@ export default function ShareBar(props: ShareBarProps) {
             <p className="font-mono text-xs uppercase tracking-wider text-center">
               Preparing share image & text…
             </p>
+          )}
+
+          {step === "error" && (
+            <div className="space-y-3">
+              <p className="font-mono text-xs uppercase tracking-wider text-headline text-center">
+                Couldn&apos;t create the share image — try again, or use Copy
+                text below
+              </p>
+              <div className="flex flex-wrap items-center gap-2 justify-center">
+                <button
+                  type="button"
+                  onClick={handlePrepare}
+                  className="border-3 border-ink bg-cta px-3 py-1.5 font-mono text-xs uppercase shadow-brutal-sm"
+                >
+                  Try again
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("idle")}
+                  className="border-3 border-ink bg-surface px-3 py-1.5 font-mono text-xs uppercase text-muted"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
           )}
 
           {step === "ready" && (
