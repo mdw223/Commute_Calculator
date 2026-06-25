@@ -6,6 +6,7 @@ import SalaryShareCard from "@/components/share/SalaryShareCard";
 import {
   canNativeShareFile,
   copyImageToClipboard,
+  copyTextFromElement,
   copyTextToClipboard,
   nativeShareWithFile,
   prepareShareImage,
@@ -55,6 +56,7 @@ export default function ShareBar(props: ShareBarProps) {
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [nativeShareAvailable, setNativeShareAvailable] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const shareTextRef = useRef<HTMLTextAreaElement>(null);
 
   const pageUrl =
     props.variant === "commute" ? getCommutePageUrl() : getSalaryPageUrl();
@@ -99,9 +101,17 @@ export default function ShareBar(props: ShareBarProps) {
     }
   }, [buildText]);
 
-  const handleCopyText = useCallback(async () => {
-    const copied = await copyTextToClipboard(shareText);
-    setTextCopied(copied);
+  const handleCopyText = useCallback(() => {
+    const textarea = shareTextRef.current;
+    if (textarea) {
+      const copiedFromElement = copyTextFromElement(textarea);
+      if (copiedFromElement) {
+        setTextCopied(true);
+        return;
+      }
+    }
+
+    void copyTextToClipboard(shareText).then(setTextCopied);
   }, [shareText]);
 
   const handlePlatformShare = useCallback(
@@ -206,11 +216,14 @@ export default function ShareBar(props: ShareBarProps) {
                 {!imageCopied && " (use the downloaded PNG if paste didn’t work)"}
               </p>
 
-              <div className="border-3 border-ink bg-newsprint p-3 max-h-24 overflow-y-auto">
-                <pre className="text-xs whitespace-pre-wrap font-sans text-ink">
-                  {shareText}
-                </pre>
-              </div>
+              <textarea
+                ref={shareTextRef}
+                readOnly
+                value={shareText}
+                rows={4}
+                aria-label="Share text"
+                className="w-full border-3 border-ink bg-newsprint p-3 max-h-24 overflow-y-auto text-xs whitespace-pre-wrap font-sans text-ink resize-none focus:outline-none focus:ring-2 focus:ring-headline"
+              />
 
               <div className="flex flex-wrap items-center gap-2">
                 <button

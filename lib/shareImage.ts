@@ -157,21 +157,82 @@ export async function copyImageToClipboard(blob: Blob): Promise<boolean> {
   }
 }
 
-export async function copyTextToClipboard(text: string): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
-    return false;
-  }
+export function copyTextWithExecCommand(text: string): boolean {
+  if (typeof document === "undefined") return false;
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.cssText =
+    "position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
 
   try {
-    await withTimeout(
-      navigator.clipboard.writeText(text),
-      CLIPBOARD_TIMEOUT_MS,
-      "Text clipboard timed out"
-    );
-    return true;
+    textarea.setSelectionRange(0, text.length);
   } catch {
-    return false;
+    // Some browsers reject setSelectionRange on hidden fields.
   }
+
+  let success = false;
+  try {
+    success = document.execCommand("copy");
+  } catch {
+    success = false;
+  }
+
+  document.body.removeChild(textarea);
+  return success;
+}
+
+export function copyTextFromElement(element: HTMLTextAreaElement): boolean {
+  if (typeof document === "undefined") return false;
+
+  const selection = document.getSelection();
+  const selectedRange =
+    selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+
+  element.focus();
+  element.select();
+
+  try {
+    element.setSelectionRange(0, element.value.length);
+  } catch {
+    // Ignore selection errors on unsupported browsers.
+  }
+
+  let success = false;
+  try {
+    success = document.execCommand("copy");
+  } catch {
+    success = false;
+  }
+
+  element.blur();
+
+  if (selectedRange && selection) {
+    selection.removeAllRanges();
+    selection.addRange(selectedRange);
+  }
+
+  return success;
+}
+
+export async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (typeof document === "undefined") return false;
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to execCommand — required on many mobile browsers.
+    }
+  }
+
+  return copyTextWithExecCommand(text);
 }
 
 export async function prepareShareImage(element: HTMLElement): Promise<Blob> {
