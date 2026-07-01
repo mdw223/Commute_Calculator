@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import CalendarLink, Job, JobStatus, User
+from app.rate_limit import limiter, user_or_ip_key
 from app.schemas import (
     CalendarConflictOut,
     CalendarEventOut,
@@ -68,12 +69,15 @@ def _job_to_out(job: Job, calendar_conflict: bool | None = None) -> JobOut:
 
 
 @router.get("/users/me", response_model=UserOut)
-async def get_profile(user: User = Depends(get_current_user)):
+@limiter.limit("120/minute", key_func=user_or_ip_key)
+async def get_profile(request: Request, user: User = Depends(get_current_user)):
     return user
 
 
 @router.patch("/users/me", response_model=UserOut)
+@limiter.limit("120/minute", key_func=user_or_ip_key)
 async def update_profile(
+    request: Request,
     body: UserUpdate,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -90,7 +94,9 @@ async def update_profile(
 
 
 @router.get("/jobs", response_model=list[JobOut])
+@limiter.limit("120/minute", key_func=user_or_ip_key)
 async def list_jobs(
+    request: Request,
     status: JobStatusEnum | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -123,7 +129,9 @@ async def list_jobs(
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)
+@limiter.limit("120/minute", key_func=user_or_ip_key)
 async def get_job(
+    request: Request,
     job_id: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -145,7 +153,9 @@ async def get_job(
 
 
 @router.patch("/jobs/{job_id}", response_model=JobOut)
+@limiter.limit("120/minute", key_func=user_or_ip_key)
 async def update_job(
+    request: Request,
     job_id: UUID,
     body: JobUpdate,
     user: User = Depends(get_current_user),
@@ -162,7 +172,9 @@ async def update_job(
 
 
 @router.post("/jobs/{job_id}/commute", response_model=CommuteResponse)
+@limiter.limit("30/hour", key_func=user_or_ip_key)
 async def compute_job_commute(
+    request: Request,
     job_id: UUID,
     body: CommuteRequest,
     user: User = Depends(get_current_user),
@@ -203,7 +215,9 @@ async def compute_job_commute(
 
 
 @router.get("/jobs/{job_id}/calendar/conflicts", response_model=CalendarConflictOut)
+@limiter.limit("60/hour", key_func=user_or_ip_key)
 async def get_job_conflicts(
+    request: Request,
     job_id: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -236,7 +250,9 @@ async def get_job_conflicts(
 
 
 @router.post("/jobs/{job_id}/calendar/tentative")
+@limiter.limit("60/hour", key_func=user_or_ip_key)
 async def add_tentative_calendar_event(
+    request: Request,
     job_id: UUID,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -260,7 +276,9 @@ async def add_tentative_calendar_event(
 
 
 @router.post("/jobs/plan-route", response_model=PlanRouteResponse)
+@limiter.limit("20/hour", key_func=user_or_ip_key)
 async def plan_route(
+    request: Request,
     body: PlanRouteRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -317,7 +335,9 @@ async def plan_route(
 
 
 @router.get("/calendar/events", response_model=list[CalendarEventOut])
+@limiter.limit("60/hour", key_func=user_or_ip_key)
 async def list_calendar_events(
+    request: Request,
     start: datetime = Query(...),
     end: datetime = Query(...),
     user: User = Depends(get_current_user),
@@ -343,7 +363,9 @@ async def list_calendar_events(
 
 
 @router.get("/day-plan", response_model=DayPlanResponse)
+@limiter.limit("120/minute", key_func=user_or_ip_key)
 async def get_day_plan(
+    request: Request,
     date: str = Query(..., description="YYYY-MM-DD"),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

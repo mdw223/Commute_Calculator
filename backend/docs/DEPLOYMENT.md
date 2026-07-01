@@ -21,7 +21,7 @@ User on Vercel (/sweeps)
     → Google login
     → https://api-jobs.tritechhelp.com/auth/google/callback
     → backend issues JWT
-    → https://<vercel-app>.vercel.app/sweeps?token=...
+    → https://<vercel-app>.vercel.app/sweeps/auth/callback#token=...
 ```
 
 Google OAuth is server-side on the Python backend — Google does **not** talk to Vercel for the callback.
@@ -116,15 +116,22 @@ Postgres has no public port — the backend reaches it on the internal Docker ne
 ### `backend/.env` (production)
 
 ```env
+ENV=production
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=https://api-jobs.tritechhelp.com/auth/google/callback
 FRONTEND_URL=https://<vercel-app>.vercel.app
 CORS_ORIGINS=https://<vercel-app>.vercel.app
+ALLOWED_EMAILS=you@gmail.com
+TRUSTED_HOSTS=api-jobs.tritechhelp.com,localhost,127.0.0.1
 SECRET_KEY=<random 64-char string>
 ENCRYPTION_KEY=<python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
 ORS_API_KEY=...
+JWT_EXPIRE_MINUTES=1440
+RATE_LIMIT_ENABLED=true
 ```
+
+`ALLOWED_EMAILS`: comma-separated list for personal use. Leave **empty** to allow any Google account (open signup).
 
 `backend/.env` lives only on the VPS (not in git).
 
@@ -176,14 +183,33 @@ sudo ln -s /etc/nginx/sites-available/api.islamiccalendarsync.com /etc/nginx/sit
 
 ### Nginx site: `api-jobs.tritechhelp.com` (Sweeps)
 
+**Do not replace a working Certbot SSL config with the HTTP-only block below.** If Certbot already created HTTPS on the VPS, use the **post-Certbot** file in the next subsection.
+
+#### New site (HTTP only, before Certbot)
+
 Create `/etc/nginx/sites-available/api-jobs.tritechhelp.com`:
 
 ```nginx
+limit_req_zone $binary_remote_addr zone=sweeps_api:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=sweeps_auth:10m rate=5r/m;
+
 server {
     listen 80;
+    listen [::]:80;
     server_name api-jobs.tritechhelp.com;
 
+    location /auth/ {
+        limit_req zone=sweeps_auth burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location / {
+        limit_req zone=sweeps_api burst=20 nodelay;
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -193,6 +219,70 @@ server {
     }
 }
 ```
+
+Then run `sudo certbot --nginx -d api-jobs.tritechhelp.com` and verify the HTTPS `server` block still has the `location /auth/` and `location /` blocks with `limit_req` and `proxy_set_header` (Certbot sometimes only adds SSL lines).
+
+#### Post-Certbot (edit existing VPS file)
+
+If you already have SSL from Certbot, **keep all Certbot SSL lines** and split the single `location /` into two locations with rate limits. Full file:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=sweeps_api:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=sweeps_auth:10m rate=5r/m;
+
+server {
+    server_name api-jobs.tritechhelp.com;
+
+    location /auth/ {
+        limit_req zone=sweeps_auth burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        limit_req zone=sweeps_api burst=20 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/api-jobs.tritechhelp.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/api-jobs.tritechhelp.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+
+server {
+    if ($host = api-jobs.tritechhelp.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    listen [::]:80;
+    server_name api-jobs.tritechhelp.com;
+    return 404; # managed by Certbot
+}
+```
+
+On the VPS:
+
+```bash
+sudo nano /etc/nginx/sites-available/api-jobs.tritechhelp.com
+sudo nginx -t
+sudo systemctl reload nginx
+curl https://api-jobs.tritechhelp.com/health
+```
+
+`X-Real-IP` is required so the app's slowapi rate limiter sees the real client IP, not `127.0.0.1`. Rate limits on port 80 are optional — Certbot redirects HTTP to HTTPS, so the **443** block above is what matters.
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/api-jobs.tritechhelp.com /etc/nginx/sites-enabled/
@@ -306,6 +396,45 @@ SSH into VPS           →  laptop key              →  authorized_keys
 4. Create Gmail filter (Settings page): `from:newjob@sweeps.jobs` → label `Sweeps`
 5. Forward a Sweeps email or wait for a new one
 6. Job should appear within ~2 minutes
+
+---
+
+## 8. Security and rate limiting
+
+The FastAPI app enforces:
+
+| Layer | What |
+|-------|------|
+| **JWT** | All job/calendar routes require `Authorization: Bearer` |
+| **OAuth state** | Signed cookie validates CSRF on Google callback |
+| **Email allowlist** | `ALLOWED_EMAILS` — empty = open signup |
+| **slowapi** | Per-IP limits on `/auth/*` and `/health`; per-user limits on ORS/calendar routes |
+| **Production** | `ENV=production` disables `/docs`, enables `TrustedHostMiddleware` |
+| **nginx** | Coarse `limit_req` on `/auth/` and global API (see section 3) |
+
+### Security env vars
+
+| Variable | Production | Notes |
+|----------|------------|-------|
+| `ENV` | `production` | Disables OpenAPI docs |
+| `ALLOWED_EMAILS` | `you@gmail.com` | Empty = any Google account |
+| `TRUSTED_HOSTS` | `api-jobs.tritechhelp.com` | Host header validation |
+| `JWT_EXPIRE_MINUTES` | `1440` | 24h; user re-logs in after expiry |
+| `RATE_LIMIT_ENABLED` | `true` | Set `false` only for local debugging |
+
+### App rate limits (slowapi)
+
+| Route | Limit |
+|-------|-------|
+| `GET /health` | 60/min per IP |
+| `GET /auth/google/login` | 10/min per IP |
+| `GET /auth/google/callback` | 20/min per IP |
+| `POST /jobs/*/commute` | 30/hour per user |
+| `POST /jobs/plan-route` | 20/hour per user |
+| Calendar endpoints | 60/hour per user |
+| Other authenticated routes | 120/min per user |
+
+JWT is delivered via URL **hash fragment** (`/sweeps/auth/callback#token=...`) so it is not logged by servers or sent in Referer headers.
 
 ---
 

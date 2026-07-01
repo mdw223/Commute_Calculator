@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
@@ -12,7 +11,6 @@ import {
   getGoogleLoginUrl,
   getMe,
   listJobs,
-  setAuthToken,
   updateJob,
   useGeolocation,
 } from "@/lib/sweepsApi";
@@ -21,8 +19,6 @@ import type { CommuteResult, SweepsJob, SweepsUser } from "@/types/sweeps";
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
 
 export default function SweepsDashboard() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [user, setUser] = useState<SweepsUser | null>(null);
   const [jobs, setJobs] = useState<SweepsJob[]>([]);
   const [commutes, setCommutes] = useState<Record<string, CommuteResult>>({});
@@ -48,13 +44,8 @@ export default function SweepsDashboard() {
   }, []);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    if (token) {
-      setAuthToken(token);
-      router.replace("/sweeps");
-    }
     loadData();
-  }, [searchParams, router, loadData]);
+  }, [loadData]);
 
   useEffect(() => {
     useGeolocation()

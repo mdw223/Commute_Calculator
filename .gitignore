@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (keep tracked examples)
+# env files (keep tracked examples only)
 .env*
 !.env.example
 !**/.env.example
@@ -41,15 +41,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
-# python / backend
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-*$py.class
+# python / FastAPI backend
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
 *.so
 .Python
-.pytest_cache/
+**/.pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
@@ -57,12 +57,15 @@ htmlcov/
 dist/
 *.egg-info/
 .eggs/
+*.egg
 
 # docker local overrides
 docker-compose.override.yml
 
-# IDE
+# IDE / editor
 .idea/
+.vscode/
+.cursor/
 *.swp
 *.swo
 *~
