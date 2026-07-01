@@ -1,0 +1,45 @@
+MIME-Version: 1.0
+From: newjob@sweeps.jobs
+To: test@example.com
+Subject: =?utf-8?Q?Sweeps:=20New=20Job!=20Raleigh,=20NC=20Yard=20Work=20job=20on=20Wed.=20Jul=2001=20at=2011:00am=20was=20posted!?=
+Message-ID: <test-message-id@sweeps.jobs>
+Date: Tue, 30 Jun 2026 18:38:08 +0000
+Content-Type: multipart/alternative; boundary="boundary123"
+
+--boundary123
+Content-Type: text/plain; charset=utf-8
+
+plain text fallback
+
+--boundary123
+Content-Type: text/html; charset=utf-8
+
+<div>
+<table>
+<tbody>
+<tr><td style="background-color: #666; color: #fff; font-weight: bold; padding: 5px">Job Poster</td></tr>
+<tr><td style="padding: 5px 10px">New User</td></tr>
+<tr><td style="background-color: #666; color: #fff; font-weight: bold; padding: 5px">What</td></tr>
+<tr><td style="font-weight: bold; padding: 3px 5px">Category</td></tr>
+<tr><td style="padding: 5px 10px">Yard Work</td></tr>
+<tr><td style="font-weight: bold; padding: 3px 5px 0px 5px">Details</td></tr>
+<tr><td style="padding: 5px 10px"><p>Help dig a hole. 15 ft long by 18 in deep, no roots or rocks. I have post hole digger, shovel, mattock cutter.</p></td></tr>
+<tr><td style="font-weight: bold; padding: 3px 5px">Number of Sweepers Requested</td></tr>
+<tr><td style="padding: 5px 10px">1</td></tr>
+<tr><td style="background-color: #666; color: #fff; font-weight: bold; padding: 5px">When</td></tr>
+<tr><td style="font-weight: bold; padding: 3px 5px">Date and Time Preference</td></tr>
+<tr><td style="padding: 5px 10px">Start At</td></tr>
+<tr><td style="padding: 5px 10px">Wednesday, 07/01/26 11:00AM (3 hr duration estimate)</td></tr>
+<tr><td style="font-weight: bold; padding: 3px 5px">Details</td></tr>
+<tr><td style="padding: 5px 10px"><p>Flexible Time</p></td></tr>
+<tr><td style="background-color: #666; color: #fff; font-weight: bold; padding: 5px">Where</td></tr>
+<tr><td style="font-weight: bold; padding: 3px 5px">Location</td></tr>
+<tr><td style="padding: 5px 10px">Lead Mine Road</td></tr>
+<tr><td style="padding: 5px 10px">Raleigh, NC</td></tr>
+<tr><td style="padding: 5px 10px">27612</td></tr>
+<tr><td style="padding-bottom: 20px; text-align: center"><p><a href="https://app.sweeps.jobs/sweeper/jobs/7c8197ab/completes/new">View Job</a></p></td></tr>
+</tbody>
+</table>
+</div>
+
+--boundary123--
