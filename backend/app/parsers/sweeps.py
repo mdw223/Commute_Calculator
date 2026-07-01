@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import email
+import base64
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
 from email.message import Message
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 from bs4 import BeautifulSoup
 
@@ -137,12 +139,53 @@ def _parse_duration_minutes(text: str | None) -> int | None:
     return None
 
 
+def _decode_mandrill_url(href: str) -> str | None:
+    if "mandrillapp.com/track/click" not in href:
+        return None
+    payload = parse_qs(urlparse(href).query).get("p", [None])[0]
+    if not payload:
+        return None
+    try:
+        padded = payload + "=" * (-len(payload) % 4)
+        outer = json.loads(base64.urlsafe_b64decode(padded))
+        inner_raw = outer.get("p")
+        if not isinstance(inner_raw, str):
+            return None
+        inner = json.loads(inner_raw)
+        url = inner.get("url")
+        return url if isinstance(url, str) else None
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+
+
+def _resolve_href(href: str) -> str:
+    href = unquote(href)
+    return _decode_mandrill_url(href) or href
+
+
+def _is_sweeps_job_url(url: str) -> bool:
+    return "sweeps.jobs" in url and "/jobs/" in url
+
+
 def _extract_job_url(soup: BeautifulSoup) -> str | None:
+    view_job_url: str | None = None
+    compete_url: str | None = None
+    any_job_url: str | None = None
+
     for a in soup.find_all("a", href=True):
-        href = a["href"]
-        if "app.sweeps.jobs" in href and "/jobs/" in href:
-            return unquote(href)
-    return None
+        text = a.get_text(" ", strip=True).lower()
+        resolved = _resolve_href(a["href"])
+        if not _is_sweeps_job_url(resolved):
+            continue
+        if text == "view job":
+            view_job_url = resolved
+            break
+        if "/competes/" in resolved and compete_url is None:
+            compete_url = resolved
+        if any_job_url is None:
+            any_job_url = resolved
+
+    return view_job_url or compete_url or any_job_url
 
 
 def _extract_job_id(url: str | None) -> str | None:

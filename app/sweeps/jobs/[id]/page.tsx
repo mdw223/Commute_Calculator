@@ -149,6 +149,16 @@ export default function JobDetailPage() {
               Add to Calendar
             </button>
           )}
+          {job.job_url && (
+            <a
+              href={job.job_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border-2 border-ink px-4 py-2 font-mono text-xs uppercase bg-surface hover:bg-cta/20"
+            >
+              View Job
+            </a>
+          )}
           <button
             type="button"
             onClick={() => setConfirmDismiss(true)}
@@ -156,16 +166,6 @@ export default function JobDetailPage() {
           >
             Dismiss
           </button>
-          {job.job_url && (
-            <a
-              href={job.job_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="border-2 border-ink px-4 py-2 font-mono text-xs uppercase"
-            >
-              Open on Sweeps
-            </a>
-          )}
         </div>
         {actionMsg && <p className="font-mono text-xs text-muted">{actionMsg}</p>}
       </main>

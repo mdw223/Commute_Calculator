@@ -23,6 +23,7 @@ def test_parse_sweeps_email_fixture():
     assert job.zip_code == "27612"
     assert job.full_address == "Lead Mine Road, Raleigh, NC, 27612"
     assert job.sweeps_job_id == "7c8197ab"
+    assert job.job_url == "https://app.sweeps.jobs/sweeper/jobs/7c8197ab/completes/new"
     assert job.gmail_message_id == "<test-message-id@sweeps.jobs>"
     assert "Sweeps" in (job.subject or "")
 
@@ -30,3 +31,23 @@ def test_parse_sweeps_email_fixture():
 def test_parse_requires_html():
     with pytest.raises(ValueError, match="No HTML"):
         parse_sweeps_email(b"Subject: test\n\nplain only")
+
+
+def test_extract_job_url_from_mandrill_tracking_link():
+    html = """
+    <html><body>
+    <a href="https://mandrillapp.com/track/click/30125238/app.sweeps.jobs?p=eyJzIjoiS0lvaGJFaWllc3VBRThLdjdDTGlONEpFOE1jIiwidiI6MiwicCI6IntcInVcIjozMDEyNTIzOCxcInZcIjoyLFwidXJsXCI6XCJodHRwczpcXFwvXFxcL2FwcC5zd2VlcHMuam9ic1xcXC9zd2VlcGVyXFxcL2pvYnNcXFwvYWJiOGE2M2NcXFwvY29tcGV0ZXNcXFwvbmV3XCIsXCJpZFwiOlwiZjljMGUxMzNjNWUzNGY2NjhkMGJiZWNiYTRhOTJhOTlcIixcInVybF9pZHNcIjpbXCI4MDlkYTcyYzhjNTRkYWFjYzUyMTU5YmM4ZjhmYWViZGQ0YjliNDEwXCJdLFwibXNnX3RzXCI6MTc4MjY2MTIyOH0ifQ">View Job</a>
+    </body></html>
+    """
+    raw = (
+        b"From: newjob@sweeps.jobs\r\n"
+        b"To: test@example.com\r\n"
+        b"Subject: Sweeps test\r\n"
+        b"Message-ID: <mandrill-test@sweeps.jobs>\r\n"
+        b"Content-Type: text/html; charset=utf-8\r\n"
+        b"\r\n"
+        + html.encode()
+    )
+    job = parse_sweeps_email(raw)
+    assert job.job_url == "https://app.sweeps.jobs/sweeper/jobs/abb8a63c/competes/new"
+    assert job.sweeps_job_id == "abb8a63c"

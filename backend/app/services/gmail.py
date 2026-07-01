@@ -98,6 +98,43 @@ async def ingest_message(
     return job
 
 
+async def backfill_job_urls(
+    db: AsyncSession,
+    user: User,
+    service,
+) -> int:
+    result = await db.execute(
+        select(Job).where(
+            Job.user_id == user.id,
+            Job.job_url.is_(None),
+            Job.gmail_message_id.isnot(None),
+        )
+    )
+    jobs = result.scalars().all()
+    updated = 0
+    for job in jobs:
+        try:
+            raw = (
+                service.users()
+                .messages()
+                .get(userId="me", id=job.gmail_message_id, format="raw")
+                .execute()
+            )
+            raw_bytes = base64.urlsafe_b64decode(raw["raw"])
+            parsed = parse_sweeps_email(raw_bytes)
+            if not parsed.job_url:
+                continue
+            job.job_url = parsed.job_url
+            if parsed.sweeps_job_id and not job.sweeps_job_id:
+                job.sweeps_job_id = parsed.sweeps_job_id
+            updated += 1
+        except Exception as e:
+            logger.warning("Failed to backfill job URL for %s: %s", job.id, e)
+    if updated:
+        await db.commit()
+    return updated
+
+
 async def poll_user_gmail(db: AsyncSession, user: User) -> GmailPollResult:
     refresh_token = get_user_refresh_token(user)
     if not refresh_token:
@@ -132,6 +169,7 @@ async def poll_user_gmail(db: AsyncSession, user: User) -> GmailPollResult:
                 count += 1
         except Exception as e:
             logger.error("Failed to ingest message %s: %s", msg["id"], e)
+    await backfill_job_urls(db, user, service)
     return GmailPollResult(ingested=count, label_found=True)
 
 
