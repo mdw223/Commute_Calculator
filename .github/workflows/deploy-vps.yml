@@ -1,0 +1,38 @@
+name: Deploy to VPS
+
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   VPS_HOST          — VPS IP or hostname (e.g. Contabo server)
+#   VPS_USER          — SSH user (e.g. root or deploy)
+#   VPS_DEPLOY_PATH   — Absolute path to repo on VPS (e.g. /home/deploy/Commute_Calculator)
+#   VPS_SSH_KEY       — Private key for GitHub Actions → VPS SSH (NOT the VPS→GitHub deploy key)
+#
+# One-time on VPS: clone repo, configure backend/.env, ensure git remote can pull main.
+# Frontend still deploys via Vercel on push to main; this workflow only updates the Python backend.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          # port: 22  # uncomment if SSH is not on the default port
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.VPS_DEPLOY_PATH }}
+            git fetch origin
+            git checkout main
+            git pull origin main
+            docker compose up --build -d
+            docker image prune -f

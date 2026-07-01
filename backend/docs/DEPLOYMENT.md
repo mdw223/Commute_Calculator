@@ -23,17 +23,34 @@ Hybrid setup: **Next.js on Vercel** + **Python backend on Railway** (or VPS).
 
 5. Note the public Railway URL (e.g. `https://sweeps-api-production.up.railway.app`)
 
-### Alternative: Hetzner VPS
+### Alternative: VPS (Contabo / Hetzner)
 
 ```bash
 # On VPS with Docker
-git clone <repo>
+git clone git@github.com:mdw223/Commute_Calculator.git
 cd Commute_Calculator
 cp backend/.env.example backend/.env  # configure
-docker compose up -d
+docker compose up -d --build
 ```
 
-Use nginx/Caddy for HTTPS and proxy `api.yourdomain.com` → port 8000.
+Use host nginx for HTTPS and proxy `api-jobs.tritechhelp.com` → `127.0.0.1:8000`.
+
+#### Auto-deploy on push to `main` (GitHub Actions)
+
+Workflow: [`.github/workflows/deploy-vps.yml`](../../.github/workflows/deploy-vps.yml)
+
+Add these **repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Example |
+|--------|---------|
+| `VPS_HOST` | Your server IP or hostname |
+| `VPS_USER` | SSH login user |
+| `VPS_DEPLOY_PATH` | `/home/you/Commute_Calculator` |
+| `VPS_SSH_KEY` | Private key for Actions → VPS (generate a dedicated key pair; add the public key to `~/.ssh/authorized_keys` on the VPS) |
+
+`backend/.env` lives only on the VPS (not in git). The workflow runs `git pull` + `docker compose up --build -d`.
+
+The Next.js frontend still deploys automatically via **Vercel** when you push to `main`.
 
 ## 2. Deploy Next.js frontend (Vercel)
 
