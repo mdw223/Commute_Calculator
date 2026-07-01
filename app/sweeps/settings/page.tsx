@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
-import { getMe, updateProfile } from "@/lib/sweepsApi";
-import type { SweepsUser } from "@/types/sweeps";
+import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
+import { useSweeps } from "@/components/sweeps/SweepsProvider";
+import { updateProfile } from "@/lib/sweepsApi";
 
 export default function SweepsSettingsPage() {
-  const [user, setUser] = useState<SweepsUser | null>(null);
+  const { user, setUser, loading } = useSweeps();
   const [defaultPay, setDefaultPay] = useState(20);
   const [buffer, setBuffer] = useState(30);
   const [mpg, setMpg] = useState(25);
@@ -16,17 +17,13 @@ export default function SweepsSettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    getMe()
-      .then((u) => {
-        setUser(u);
-        setDefaultPay(u.default_job_pay);
-        setBuffer(u.travel_buffer_minutes);
-        const cs = u.cost_settings as Record<string, number>;
-        if (cs.mpg) setMpg(cs.mpg);
-        if (cs.gasPricePerGallon) setGasPrice(cs.gasPricePerGallon);
-      })
-      .catch(() => null);
-  }, []);
+    if (!user) return;
+    setDefaultPay(user.default_job_pay);
+    setBuffer(user.travel_buffer_minutes);
+    const cs = user.cost_settings as Record<string, number>;
+    if (cs.mpg) setMpg(cs.mpg);
+    if (cs.gasPricePerGallon) setGasPrice(cs.gasPricePerGallon);
+  }, [user]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -51,9 +48,12 @@ export default function SweepsSettingsPage() {
     <div className="min-h-screen flex flex-col">
       <SiteNav />
       <main className="flex-1 max-w-2xl mx-auto w-full p-4 space-y-6">
-        <Link href="/sweeps" className="font-mono text-xs uppercase hover:underline">
-          ← Back to jobs
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/sweeps" className="font-mono text-xs uppercase hover:underline">
+            ← Back to jobs
+          </Link>
+          <SweepsSubnav />
+        </div>
 
         <h1 className="font-display text-2xl font-bold">Settings</h1>
 
@@ -115,6 +115,7 @@ export default function SweepsSettingsPage() {
           </button>
           {saved && <p className="font-mono text-xs text-muted">Saved!</p>}
         </section>
+        {loading && <p className="font-mono text-xs text-muted">Loading…</p>}
       </main>
       <SiteFooter />
     </div>

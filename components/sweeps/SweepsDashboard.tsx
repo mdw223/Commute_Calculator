@@ -1,68 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import JobCard from "@/components/sweeps/JobCard";
-import {
-  clearAuthToken,
-  computeCommute,
-  getGoogleLoginUrl,
-  getMe,
-  listJobs,
-  syncGmail,
-  updateJob,
-  useGeolocation,
-} from "@/lib/sweepsApi";
-import type { CommuteResult, SweepsJob, SweepsUser } from "@/types/sweeps";
+import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
+import { useSweeps } from "@/components/sweeps/SweepsProvider";
+import { computeCommute, getGoogleLoginUrl, useGeolocation } from "@/lib/sweepsApi";
+import type { CommuteResult } from "@/types/sweeps";
 
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
 
 export default function SweepsDashboard() {
-  const [user, setUser] = useState<SweepsUser | null>(null);
-  const [activeJobs, setActiveJobs] = useState<SweepsJob[]>([]);
-  const [dismissedJobs, setDismissedJobs] = useState<SweepsJob[]>([]);
-  const [expiredJobs, setExpiredJobs] = useState<SweepsJob[]>([]);
+  const {
+    user,
+    activeJobs,
+    dismissedJobs,
+    expiredJobs,
+    loading,
+    error,
+    syncGmailLabel,
+    dismissJob,
+    restoreJob,
+    signOut,
+  } = useSweeps();
+
   const [commutes, setCommutes] = useState<Record<string, CommuteResult>>({});
   const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [dismissedOpen, setDismissedOpen] = useState(true);
   const [expiredOpen, setExpiredOpen] = useState(false);
-
-  const reloadJobLists = useCallback(async () => {
-    const [active, dismissed, expired] = await Promise.all([
-      listJobs(),
-      listJobs("dismissed"),
-      listJobs("expired"),
-    ]);
-    setActiveJobs(active);
-    setDismissedJobs(dismissed);
-    setExpiredJobs(expired);
-  }, []);
-
-  const loadData = useCallback(async () => {
-    try {
-      const me = await getMe();
-      setUser(me);
-      await reloadJobLists();
-      setError(null);
-    } catch {
-      setUser(null);
-      setError("Not signed in");
-    } finally {
-      setLoading(false);
-    }
-  }, [reloadJobLists]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   useEffect(() => {
     useGeolocation()
@@ -84,27 +55,15 @@ export default function SweepsDashboard() {
   }, [origin, activeJobs]);
 
   const handleDismiss = async (id: string) => {
-    const job = activeJobs.find((j) => j.id === id);
-    if (!job) return;
-    const updated = await updateJob(id, { status: "dismissed" });
-    setActiveJobs((prev) => prev.filter((j) => j.id !== id));
-    setDismissedJobs((prev) => [updated, ...prev]);
+    await dismissJob(id);
     if (selectedId === id) setSelectedId(null);
-  };
-
-  const handleRestore = async (id: string) => {
-    const job = dismissedJobs.find((j) => j.id === id);
-    if (!job) return;
-    const updated = await updateJob(id, { status: "new" });
-    setDismissedJobs((prev) => prev.filter((j) => j.id !== id));
-    setActiveJobs((prev) => [updated, ...prev]);
   };
 
   const handleSync = async () => {
     setSyncing(true);
     setSyncMessage(null);
     try {
-      const result = await syncGmail();
+      const result = await syncGmailLabel();
       if (result.needs_reauth) {
         setSyncMessage("Google sign-in expired. Sign out and sign in again.");
       } else if (!result.label_found) {
@@ -113,10 +72,8 @@ export default function SweepsDashboard() {
         setSyncMessage(
           `Imported ${result.ingested} new job${result.ingested === 1 ? "" : "s"}.`
         );
-        await reloadJobLists();
       } else {
         setSyncMessage("Checked Sweeps label — no new emails.");
-        await reloadJobLists();
       }
     } catch {
       setSyncMessage("Sync failed. Try signing in again.");
@@ -168,31 +125,11 @@ export default function SweepsDashboard() {
             <h1 className="font-display text-2xl font-bold">Sweeps Jobs</h1>
             <p className="font-mono text-xs text-muted">{user.email}</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <a
-              href="/sweeps/planner"
-              className="border-2 border-ink px-3 py-1 font-mono text-xs uppercase bg-surface hover:bg-cta/20"
-            >
-              Day Planner
-            </a>
-            <a
-              href="/sweeps/route"
-              className="border-2 border-ink px-3 py-1 font-mono text-xs uppercase bg-surface hover:bg-cta/20"
-            >
-              Plan Route
-            </a>
-            <a
-              href="/sweeps/settings"
-              className="border-2 border-ink px-3 py-1 font-mono text-xs uppercase bg-surface hover:bg-cta/20"
-            >
-              Settings
-            </a>
+          <div className="flex gap-2 flex-wrap items-center">
+            <SweepsSubnav />
             <button
               type="button"
-              onClick={() => {
-                clearAuthToken();
-                setUser(null);
-              }}
+              onClick={signOut}
               className="border-2 border-ink px-3 py-1 font-mono text-xs uppercase text-muted"
             >
               Sign out
@@ -261,8 +198,8 @@ export default function SweepsDashboard() {
               <span className="inline-block w-4">{dismissedOpen ? "▾" : "▸"}</span>
               Dismissed ({dismissedJobs.length})
             </button>
-            {dismissedOpen && (
-              dismissedJobs.length === 0 ? (
+            {dismissedOpen &&
+              (dismissedJobs.length === 0 ? (
                 <p className="font-mono text-xs text-muted pl-6">No dismissed jobs.</p>
               ) : (
                 <div className="space-y-3">
@@ -271,12 +208,11 @@ export default function SweepsDashboard() {
                       key={job.id}
                       job={job}
                       muted
-                      onRestore={() => handleRestore(job.id)}
+                      onRestore={() => restoreJob(job.id)}
                     />
                   ))}
                 </div>
-              )
-            )}
+              ))}
           </div>
 
           <div className="space-y-3 border-t-3 border-ink pt-6">
@@ -288,8 +224,8 @@ export default function SweepsDashboard() {
               <span className="inline-block w-4">{expiredOpen ? "▾" : "▸"}</span>
               Expired ({expiredJobs.length})
             </button>
-            {expiredOpen && (
-              expiredJobs.length === 0 ? (
+            {expiredOpen &&
+              (expiredJobs.length === 0 ? (
                 <p className="font-mono text-xs text-muted pl-6">No expired jobs.</p>
               ) : (
                 <div className="space-y-3">
@@ -297,8 +233,7 @@ export default function SweepsDashboard() {
                     <JobCard key={job.id} job={job} muted />
                   ))}
                 </div>
-              )
-            )}
+              ))}
           </div>
         </section>
 

@@ -5,21 +5,74 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
+import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
+import { useSweeps } from "@/components/sweeps/SweepsProvider";
 import { formatDuration, formatMiles } from "@/lib/calculations";
-import { listJobs, planRoute, useGeolocation } from "@/lib/sweepsApi";
-import type { PlanRouteResult, SweepsJob } from "@/types/sweeps";
+import { googleMapsDirectionsUrl, type ResolvedStop } from "@/lib/externalMaps";
+import { planRoute, useGeolocation } from "@/lib/sweepsApi";
+import type { PlanRouteResult } from "@/types/sweeps";
+import type { Stop } from "@/types";
 
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
 
+function jobAddress(job: {
+  full_address: string | null;
+  street: string | null;
+  city_state: string | null;
+  zip_code: string | null;
+  lat: number | null;
+  lng: number | null;
+}): string {
+  if (job.full_address?.trim()) return job.full_address.trim();
+  const parts = [job.street, job.city_state, job.zip_code].filter(Boolean);
+  if (parts.length > 0) return parts.join(", ");
+  if (job.lat != null && job.lng != null) return `${job.lat},${job.lng}`;
+  return "";
+}
+
+function buildRouteStops(
+  origin: { lat: number; lng: number },
+  orderedJobIds: string[],
+  jobs: {
+    id: string;
+    full_address: string | null;
+    street: string | null;
+    city_state: string | null;
+    zip_code: string | null;
+    lat: number | null;
+    lng: number | null;
+  }[]
+): Stop[] {
+  const jobById = new Map(jobs.map((j) => [j.id, j]));
+  const stops: Stop[] = [
+    {
+      id: "origin",
+      label: "",
+      coordinates: [origin.lng, origin.lat],
+    },
+  ];
+  for (const id of orderedJobIds) {
+    const job = jobById.get(id);
+    if (!job || job.lat == null || job.lng == null) continue;
+    const address = jobAddress(job);
+    if (!address) continue;
+    stops.push({
+      id: job.id,
+      label: address,
+      coordinates: [job.lng, job.lat],
+    });
+  }
+  return stops;
+}
+
 export default function RoutePlannerPage() {
-  const [jobs, setJobs] = useState<SweepsJob[]>([]);
+  const { activeJobs, loading } = useSweeps();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [route, setRoute] = useState<PlanRouteResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [planning, setPlanning] = useState(false);
 
   useEffect(() => {
-    listJobs().then(setJobs).catch(() => null);
     useGeolocation().then(setOrigin).catch(() => null);
   }, []);
 
@@ -35,24 +88,42 @@ export default function RoutePlannerPage() {
 
   const handlePlan = async () => {
     if (!origin || selected.size === 0) return;
-    setLoading(true);
+    setPlanning(true);
     try {
       const result = await planRoute([...selected], origin);
       setRoute(result);
     } finally {
-      setLoading(false);
+      setPlanning(false);
     }
   };
 
-  const selectedJobs = jobs.filter((j) => selected.has(j.id));
+  const selectedJobs = activeJobs.filter((j) => selected.has(j.id));
+  const mapStops =
+    route && origin ? buildRouteStops(origin, route.ordered_job_ids, activeJobs) : [];
+  const resolvedStops = mapStops.filter(
+    (s): s is ResolvedStop => s.coordinates !== null
+  );
+  const googleMapsUrl = googleMapsDirectionsUrl(resolvedStops, true);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <SiteNav />
+        <main className="flex-1 p-8 font-mono text-sm">Loading…</main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <SiteNav />
       <main className="flex-1 max-w-6xl mx-auto w-full p-4 space-y-6">
-        <Link href="/sweeps" className="font-mono text-xs uppercase hover:underline">
-          ← Back to jobs
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/sweeps" className="font-mono text-xs uppercase hover:underline">
+            ← Back to jobs
+          </Link>
+          <SweepsSubnav />
+        </div>
         <h1 className="font-display text-2xl font-bold">Multi-Job Route Planner</h1>
         <p className="text-sm text-muted">
           Select jobs to plan a driving route from your current location.
@@ -60,7 +131,7 @@ export default function RoutePlannerPage() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           <section className="space-y-2">
-            {jobs.map((job) => (
+            {activeJobs.map((job) => (
               <label
                 key={job.id}
                 className={`flex items-center gap-3 border-2 border-ink p-3 cursor-pointer ${
@@ -79,24 +150,36 @@ export default function RoutePlannerPage() {
             ))}
             <button
               type="button"
-              disabled={selected.size === 0 || !origin || loading}
+              disabled={selected.size === 0 || !origin || planning}
               onClick={handlePlan}
               className="border-2 border-ink bg-cta px-4 py-2 font-mono text-xs uppercase disabled:opacity-50"
             >
-              {loading ? "Planning…" : `Plan route (${selected.size} jobs)`}
+              {planning ? "Planning…" : `Plan route (${selected.size} jobs)`}
             </button>
           </section>
 
           <section className="space-y-3">
             {route && (
-              <div className="border-3 border-ink p-4 font-mono text-sm space-y-1">
-                <p>Total: {formatMiles(route.total_distance_miles)}</p>
-                <p>Time: {formatDuration(route.total_duration_minutes)}</p>
-                {route.legs.map((leg) => (
-                  <p key={leg.job_id} className="text-muted">
-                    {leg.label}: {formatMiles(leg.distance_miles)}
-                  </p>
-                ))}
+              <div className="border-3 border-ink p-4 font-mono text-sm space-y-3">
+                <div className="space-y-1">
+                  <p>Total: {formatMiles(route.total_distance_miles)}</p>
+                  <p>Time: {formatDuration(route.total_duration_minutes)}</p>
+                  {route.legs.map((leg) => (
+                    <p key={leg.job_id} className="text-muted">
+                      {leg.label}: {formatMiles(leg.distance_miles)}
+                    </p>
+                  ))}
+                </div>
+                {googleMapsUrl && (
+                  <a
+                    href={googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block border-2 border-ink bg-cta px-4 py-2 font-mono text-xs uppercase hover:translate-x-0.5 hover:translate-y-0.5 transition-transform"
+                  >
+                    Open in Google Maps
+                  </a>
+                )}
               </div>
             )}
             <JobsMap

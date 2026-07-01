@@ -5,6 +5,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
+import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
+import { useSweeps } from "@/components/sweeps/SweepsProvider";
 import { getDayPlan } from "@/lib/sweepsApi";
 import type { DayPlan } from "@/types/sweeps";
 
@@ -54,9 +56,12 @@ export default function DayPlannerPage() {
     <div className="min-h-screen flex flex-col">
       <SiteNav />
       <main className="flex-1 max-w-6xl mx-auto w-full p-4 space-y-6">
-        <Link href="/sweeps" className="font-mono text-xs uppercase hover:underline">
-          ← Back to jobs
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/sweeps" className="font-mono text-xs uppercase hover:underline">
+            ← Back to jobs
+          </Link>
+          <SweepsSubnav />
+        </div>
         <h1 className="font-display text-2xl font-bold">Day Planner</h1>
 
         <label className="font-mono text-sm">
