@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import JobCard from "@/components/sweeps/JobCard";
 import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
 import { useSweeps } from "@/components/sweeps/SweepsProvider";
-import { computeCommute, getGoogleLoginUrl } from "@/lib/sweepsApi";
-import type { CommuteResult } from "@/types/sweeps";
+import { getGoogleLoginUrl } from "@/lib/sweepsApi";
+import { useJobCommutes } from "@/lib/useJobCommutes";
 
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
 
@@ -27,27 +27,27 @@ export default function SweepsDashboard() {
     origin,
   } = useSweeps();
 
-  const [commutes, setCommutes] = useState<Record<string, CommuteResult>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [dismissedOpen, setDismissedOpen] = useState(true);
   const [expiredOpen, setExpiredOpen] = useState(false);
 
-  const originCoords = origin ? { lat: origin.lat, lng: origin.lng } : null;
-
-  useEffect(() => {
-    if (!originCoords || activeJobs.length === 0) return;
-    activeJobs.forEach(async (job) => {
-      if (job.lat == null || job.lng == null) return;
-      try {
-        const result = await computeCommute(job.id, originCoords);
-        setCommutes((prev) => ({ ...prev, [job.id]: result }));
-      } catch {
-        // ignore per-job failures
-      }
-    });
-  }, [originCoords, activeJobs]);
+  const originLat = origin?.lat ?? null;
+  const originLng = origin?.lng ?? null;
+  const originCoords = useMemo(
+    () =>
+      originLat != null && originLng != null ? { lat: originLat, lng: originLng } : null,
+    [originLat, originLng],
+  );
+  const commuteJobIds = useMemo(
+    () =>
+      activeJobs
+        .filter((j) => j.lat != null && j.lng != null)
+        .map((j) => j.id),
+    [activeJobs],
+  );
+  const commutes = useJobCommutes(commuteJobIds, originLat, originLng);
 
   const handleDismiss = async (id: string) => {
     await dismissJob(id);

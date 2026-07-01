@@ -9,7 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
 import {
   clearAuthToken,
   getAuthToken,
@@ -81,7 +80,6 @@ export function useSweepsOptional(): SweepsContextValue | null {
 }
 
 export function SweepsProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const initializedRef = useRef(false);
   const originInitializedRef = useRef(false);
   const [user, setUser] = useState<SweepsUser | null>(null);
@@ -178,7 +176,7 @@ export function SweepsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [pathname, refreshJobs]);
+  }, [refreshJobs]);
 
   useEffect(() => {
     if (originInitializedRef.current) return;

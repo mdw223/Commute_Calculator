@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 from app.config import settings
 from app.models import Job, User
@@ -27,6 +28,71 @@ def _parse_event_datetime(event: dict) -> tuple[datetime, datetime]:
     return start_dt, end_dt
 
 
+def _list_calendar_ids(service, user_email: str) -> list[str]:
+    try:
+        calendar_ids: list[str] = []
+        page_token = None
+        while True:
+            result = service.calendarList().list(pageToken=page_token).execute()
+            for entry in result.get("items", []):
+                if entry.get("deleted") or entry.get("accessRole") == "none":
+                    continue
+                calendar_ids.append(entry["id"])
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
+        return calendar_ids
+    except HttpError as e:
+        if e.resp.status == 403:
+            logger.warning(
+                "Calendar list unavailable for %s (missing calendar.readonly scope); "
+                "using primary calendar only — sign out and back in to fix",
+                user_email,
+            )
+            return ["primary"]
+        raise
+
+
+def _fetch_events_from_calendar(
+    service,
+    calendar_id: str,
+    time_min: datetime,
+    time_max: datetime,
+) -> list[dict]:
+    events: list[dict] = []
+    page_token = None
+    while True:
+        result = (
+            service.events()
+            .list(
+                calendarId=calendar_id,
+                timeMin=time_min.isoformat(),
+                timeMax=time_max.isoformat(),
+                singleEvents=True,
+                orderBy="startTime",
+                pageToken=page_token,
+            )
+            .execute()
+        )
+        events.extend(result.get("items", []))
+        page_token = result.get("nextPageToken")
+        if not page_token:
+            break
+    return events
+
+
+def _dedupe_events(events: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for event in events:
+        key = event.get("iCalUID") or event.get("id")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        unique.append(event)
+    return unique
+
+
 async def get_calendar_events(
     user: User,
     time_min: datetime,
@@ -37,18 +103,23 @@ async def get_calendar_events(
         return []
     try:
         service = _build_calendar_service(refresh_token)
-        events_result = (
-            service.events()
-            .list(
-                calendarId="primary",
-                timeMin=time_min.isoformat(),
-                timeMax=time_max.isoformat(),
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            .execute()
-        )
-        return events_result.get("items", [])
+        calendar_ids = _list_calendar_ids(service, user.email) or ["primary"]
+        all_events: list[dict] = []
+        for calendar_id in calendar_ids:
+            try:
+                all_events.extend(
+                    _fetch_events_from_calendar(service, calendar_id, time_min, time_max)
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to fetch events from calendar %s for %s: %s",
+                    calendar_id,
+                    user.email,
+                    e,
+                )
+        deduped = _dedupe_events(all_events)
+        deduped.sort(key=lambda e: _parse_event_datetime(e)[0])
+        return deduped
     except Exception as e:
         logger.error("Calendar fetch failed for %s: %s", user.email, e)
         return []

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   MapContainer,
   Marker,
@@ -31,10 +31,31 @@ function toLatLng(lng: number, lat: number): [number, number] {
 
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
+  const prevKey = useRef("");
+
   useEffect(() => {
     if (positions.length === 0) return;
+    const key = positions.map((p) => p.join(",")).join("|");
+    if (key === prevKey.current) return;
+    prevKey.current = key;
     map.fitBounds(positions, { padding: [40, 40] });
   }, [positions, map]);
+
+  return null;
+}
+
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
   return null;
 }
 
@@ -71,16 +92,25 @@ export default function JobsMap({
     fixLeafletIcons();
   }, []);
 
-  const mappedJobs = jobs.filter((j) => j.lat != null && j.lng != null);
-  const positions: [number, number][] = mappedJobs.map((j) =>
-    toLatLng(j.lng!, j.lat!)
+  const mappedJobs = useMemo(
+    () => jobs.filter((j) => j.lat != null && j.lng != null),
+    [jobs],
   );
-  if (origin) positions.push(toLatLng(origin.lng, origin.lat));
-  const routePositions =
-    routeGeometry?.map(([lng, lat]) => toLatLng(lng, lat)) ?? [];
+  const fitPositions = useMemo(() => {
+    const markerPositions: [number, number][] = mappedJobs.map((j) =>
+      toLatLng(j.lng!, j.lat!)
+    );
+    if (origin) markerPositions.push(toLatLng(origin.lng, origin.lat));
+    const routePositions =
+      routeGeometry?.map(([lng, lat]) => toLatLng(lng, lat)) ?? [];
+    return [...markerPositions, ...routePositions];
+  }, [mappedJobs, origin?.lat, origin?.lng, routeGeometry]);
 
   const center: [number, number] =
-    origin ? toLatLng(origin.lng, origin.lat) : positions[0] ?? [35.7796, -78.6382];
+    origin ? toLatLng(origin.lng, origin.lat) : fitPositions[0] ?? [35.7796, -78.6382];
+
+  const routePositions =
+    routeGeometry?.map(([lng, lat]) => toLatLng(lng, lat)) ?? [];
 
   return (
     <div
@@ -89,7 +119,8 @@ export default function JobsMap({
     >
       <MapContainer center={center} zoom={11} className="h-full w-full" scrollWheelZoom>
         <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTRIBUTION} />
-        {positions.length > 0 && <FitBounds positions={[...positions, ...routePositions]} />}
+        <MapResizeHandler />
+        {fitPositions.length > 0 && <FitBounds positions={fitPositions} />}
         {routePositions.length > 0 && (
           <Polyline
             positions={routePositions}

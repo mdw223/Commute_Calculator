@@ -117,7 +117,7 @@ async def list_jobs(
     jobs = result.scalars().all()
 
     events = []
-    if jobs:
+    if jobs and status not in (JobStatus.DISMISSED, JobStatus.EXPIRED):
         now = datetime.now(timezone.utc)
         events = await get_calendar_events(user, now - timedelta(days=1), now + timedelta(days=30))
 
@@ -203,15 +203,21 @@ async def compute_job_commute(
         raise HTTPException(status_code=400, detail="Job location not geocoded")
 
     pay = job.pay_amount or user.default_job_pay
-    result = await compute_commute(
-        body.origin_lat,
-        body.origin_lng,
-        job.lat,
-        job.lng,
-        user.cost_settings,
-        pay,
-        body.round_trip,
-    )
+    try:
+        result = await compute_commute(
+            body.origin_lat,
+            body.origin_lng,
+            job.lat,
+            job.lng,
+            user.cost_settings,
+            pay,
+            body.round_trip,
+        )
+    except ValueError as e:
+        msg = str(e)
+        if "429" in msg or "Rate Limit" in msg:
+            raise HTTPException(status_code=503, detail="Directions rate limit exceeded. Try again shortly.") from e
+        raise HTTPException(status_code=400, detail=msg) from e
 
     job.drive_distance_miles = result["distance_miles"]
     job.drive_duration_minutes = result["duration_minutes"]

@@ -8,15 +8,15 @@ import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
-  computeCommute,
   createTentativeEvent,
   getCalendarConflicts,
   getJob,
   updateJob,
 } from "@/lib/sweepsApi";
+import { useJobCommute } from "@/lib/useJobCommutes";
 import { useSweeps } from "@/components/sweeps/SweepsProvider";
 import { formatCurrency, formatDuration, formatMiles } from "@/lib/calculations";
-import type { CalendarConflict, CommuteResult, SweepsJob } from "@/types/sweeps";
+import type { CalendarConflict, SweepsJob } from "@/types/sweeps";
 
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
 
@@ -25,16 +25,19 @@ export default function JobDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const [job, setJob] = useState<SweepsJob | null>(null);
-  const [commute, setCommute] = useState<CommuteResult | null>(null);
   const [conflicts, setConflicts] = useState<CalendarConflict | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [confirmDismiss, setConfirmDismiss] = useState(false);
   const { origin: sweepsOrigin } = useSweeps();
 
-  const originCoords = sweepsOrigin
-    ? { lat: sweepsOrigin.lat, lng: sweepsOrigin.lng }
-    : null;
+  const originLat = sweepsOrigin?.lat ?? null;
+  const originLng = sweepsOrigin?.lng ?? null;
+  const originCoords =
+    originLat != null && originLng != null
+      ? { lat: originLat, lng: originLng }
+      : null;
+  const commute = useJobCommute(job?.id ?? null, originLat, originLng);
 
   useEffect(() => {
     getJob(id)
@@ -45,11 +48,6 @@ export default function JobDetailPage() {
       .then(setConflicts)
       .catch(() => null);
   }, [id, router]);
-
-  useEffect(() => {
-    if (!originCoords || !job) return;
-    computeCommute(job.id, originCoords).then(setCommute).catch(() => null);
-  }, [originCoords, job]);
 
   const handleStatus = async (status: string) => {
     const updated = await updateJob(id, { status });
