@@ -5,8 +5,7 @@ services:
       POSTGRES_USER: sweeps
       POSTGRES_PASSWORD: sweeps
       POSTGRES_DB: sweeps
-    ports:
-      - "5432:5432"
+    # No ports — backend reaches Postgres on the internal Docker network (db:5432)
     volumes:
       - sweeps_pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,7 +17,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"  # localhost only; nginx proxies api.yourdomain.com → here
     env_file:
       - ./backend/.env
     environment:
@@ -26,8 +25,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    restart: unless-stopped
 
 volumes:
   sweeps_pg_data:
