@@ -95,7 +95,7 @@ Gmail cannot POST to a webhook directly. Your chosen path is the right one:
 1. Each user creates a Gmail filter: `from:newjob@sweeps.jobs` → apply label `Sweeps`
 2. On first login, your app guides them through this one-time setup
 3. Python polls **only** `label:Sweeps` via Gmail API (not the whole inbox)
-4. After successful parse, mark message processed (custom label `Sweeps/Processed` or remove `Sweeps` label) to prevent duplicates
+4. After successful parse, store `gmail_message_id` in the database to skip duplicates on future polls (Gmail labels are left unchanged)
 
 This is cheap (a few API calls every few minutes per active user) and avoids parsing unrelated mail.
 

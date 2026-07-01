@@ -22,9 +22,9 @@ In **APIs & Services → Library**, enable:
 3. App name: `Sweeps Dashboard`
 4. Add scopes:
    - `openid`
-   - `email`
-   - `profile`
-   - `https://www.googleapis.com/auth/gmail.readonly`
+   - `https://www.googleapis.com/auth/userinfo.email`
+   - `https://www.googleapis.com/auth/userinfo.profile`
+   - `https://www.googleapis.com/auth/gmail.modify`
    - `https://www.googleapis.com/auth/calendar.events`
 5. Add your email as a test user (required while app is in Testing mode)
 

@@ -91,3 +91,9 @@ export interface DayPlan {
   date: string;
   items: DayPlanItem[];
 }
+
+export interface GmailSyncResult {
+  ingested: number;
+  label_found: boolean;
+  needs_reauth?: boolean;
+}

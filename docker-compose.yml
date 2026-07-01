@@ -5,7 +5,8 @@ services:
       POSTGRES_USER: sweeps
       POSTGRES_PASSWORD: sweeps
       POSTGRES_DB: sweeps
-    # No ports — backend reaches Postgres on the internal Docker network (db:5432)
+    ports:
+      - "127.0.0.1:5432:5432"  # local uvicorn uses localhost:5432; in-compose backend uses db:5432
     volumes:
       - sweeps_pg_data:/var/lib/postgresql/data
     healthcheck:

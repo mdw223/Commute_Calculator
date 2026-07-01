@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { formatCurrency, formatDuration, formatMiles } from "@/lib/calculations";
 import { moodColors } from "@/components/share/shareCardStyles";
 import type { CommuteResult } from "@/types/sweeps";
@@ -12,6 +14,8 @@ interface JobCardProps {
   selected?: boolean;
   onSelect?: () => void;
   onDismiss?: () => void;
+  onRestore?: () => void;
+  muted?: boolean;
 }
 
 function formatJobDate(iso: string | null): string {
@@ -31,7 +35,10 @@ export default function JobCard({
   selected,
   onSelect,
   onDismiss,
+  onRestore,
+  muted,
 }: JobCardProps) {
+  const [confirmDismiss, setConfirmDismiss] = useState(false);
   const mood = (commute?.worth_it_mood ?? job.worth_it_mood ?? "meh") as
     | "good"
     | "meh"
@@ -40,8 +47,10 @@ export default function JobCard({
 
   return (
     <article
-      className={`border-3 border-ink p-4 shadow-brutal-sm transition-colors cursor-pointer ${
-        selected ? "bg-cta/30" : "bg-surface hover:bg-newsprint"
+      className={`border-3 border-ink p-4 shadow-brutal-sm transition-colors ${
+        onSelect ? "cursor-pointer" : ""
+      } ${
+        selected ? "bg-cta/30" : muted ? "bg-newsprint/50 opacity-80" : "bg-surface hover:bg-newsprint"
       }`}
       onClick={onSelect}
     >
@@ -104,16 +113,37 @@ export default function JobCard({
             View on Sweeps
           </a>
         )}
+        {onRestore && (
+          <button
+            type="button"
+            onClick={onRestore}
+            className="border-2 border-ink px-3 py-1 font-mono text-xs uppercase bg-cta hover:bg-cta/80"
+          >
+            Restore
+          </button>
+        )}
         {onDismiss && job.status !== "dismissed" && (
           <button
             type="button"
-            onClick={onDismiss}
+            onClick={() => setConfirmDismiss(true)}
             className="border-2 border-ink px-3 py-1 font-mono text-xs uppercase text-muted hover:bg-headline/10"
           >
             Dismiss
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDismiss}
+        title="Dismiss this job?"
+        message={`"${job.category ?? "Sweeps Job"}" will move to your Dismissed list. You can restore it anytime.`}
+        confirmLabel="Dismiss"
+        onConfirm={() => {
+          setConfirmDismiss(false);
+          onDismiss?.();
+        }}
+        onCancel={() => setConfirmDismiss(false)}
+      />
     </article>
   );
 }

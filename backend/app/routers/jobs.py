@@ -16,6 +16,7 @@ from app.schemas import (
     CommuteResponse,
     DayPlanItem,
     DayPlanResponse,
+    GmailSyncOut,
     JobOut,
     JobStatusEnum,
     JobUpdate,
@@ -32,6 +33,7 @@ from app.services.calendar import (
 )
 from app.services.commute import compute_commute
 from app.services.geocode import get_directions, meters_to_miles, seconds_to_minutes
+from app.services.gmail import expire_old_jobs, poll_user_gmail
 from datetime import datetime, timedelta, timezone
 
 router = APIRouter(tags=["jobs"])
@@ -126,6 +128,22 @@ async def list_jobs(
             conflict = check_job_conflicts(job, events, user.travel_buffer_minutes)["has_conflict"]
         out.append(_job_to_out(job, conflict))
     return out
+
+
+@router.post("/jobs/sync", response_model=GmailSyncOut)
+@limiter.limit("10/minute", key_func=user_or_ip_key)
+async def sync_gmail(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await expire_old_jobs(db)
+    result = await poll_user_gmail(db, user)
+    return GmailSyncOut(
+        ingested=result.ingested,
+        label_found=result.label_found,
+        needs_reauth=result.needs_reauth,
+    )
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)

@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
+from google.auth.exceptions import RefreshError
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,3 +83,20 @@ def get_user_refresh_token(user: User) -> str | None:
     if not user.google_refresh_token_encrypted:
         return None
     return decrypt_token(user.google_refresh_token_encrypted)
+
+
+def refresh_google_credentials(refresh_token: str) -> Credentials:
+    """Refresh access token using the scopes granted at sign-in.
+
+    Do not pass scopes here — requesting scopes that differ from the original
+    OAuth grant causes Google to return invalid_scope.
+    """
+    creds = Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=settings.google_client_id,
+        client_secret=settings.google_client_secret,
+    )
+    creds.refresh(Request())
+    return creds

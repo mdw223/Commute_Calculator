@@ -1,27 +1,17 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 from app.config import settings
 from app.models import Job, User
-from app.services.auth import get_user_refresh_token
+from app.services.auth import get_user_refresh_token, refresh_google_credentials
 
 logger = logging.getLogger(__name__)
 
 
 def _build_calendar_service(refresh_token: str):
-    creds = Credentials(
-        token=None,
-        refresh_token=refresh_token,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=settings.google_client_id,
-        client_secret=settings.google_client_secret,
-        scopes=settings.google_scopes,
-    )
-    creds.refresh(Request())
+    creds = refresh_google_credentials(refresh_token)
     return build("calendar", "v3", credentials=creds, cache_discovery=False)
 
 

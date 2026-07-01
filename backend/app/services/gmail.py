@@ -1,57 +1,33 @@
 import base64
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
+from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models import Job, JobStatus, User
 from app.parsers.sweeps import parse_sweeps_email
-from app.services.auth import get_user_refresh_token
+from app.services.auth import get_user_refresh_token, refresh_google_credentials
 from app.services.geocode import geocode_address
 
 logger = logging.getLogger(__name__)
 
 SWEEPS_LABEL = "Sweeps"
-PROCESSED_LABEL = "Sweeps/Processed"
+
+
+@dataclass(frozen=True)
+class GmailPollResult:
+    ingested: int
+    label_found: bool
+    needs_reauth: bool = False
 
 
 def _build_gmail_service(refresh_token: str):
-    creds = Credentials(
-        token=None,
-        refresh_token=refresh_token,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=settings.google_client_id,
-        client_secret=settings.google_client_secret,
-        scopes=settings.google_scopes,
-    )
-    creds.refresh(Request())
+    creds = refresh_google_credentials(refresh_token)
     return build("gmail", "v1", credentials=creds, cache_discovery=False)
-
-
-def _get_or_create_label(service, name: str) -> str:
-    labels = service.users().labels().list(userId="me").execute().get("labels", [])
-    for label in labels:
-        if label["name"] == name:
-            return label["id"]
-    created = (
-        service.users()
-        .labels()
-        .create(
-            userId="me",
-            body={
-                "name": name,
-                "labelListVisibility": "labelShow",
-                "messageListVisibility": "show",
-            },
-        )
-        .execute()
-    )
-    return created["id"]
 
 
 def _get_label_id_by_name(service, name: str) -> str | None:
@@ -67,8 +43,6 @@ async def ingest_message(
     user: User,
     msg_id: str,
     service,
-    sweeps_label_id: str,
-    processed_label_id: str,
 ) -> Job | None:
     existing = await db.execute(
         select(Job).where(
@@ -120,36 +94,28 @@ async def ingest_message(
     await db.commit()
     await db.refresh(job)
 
-    service.users().messages().modify(
-        userId="me",
-        id=msg_id,
-        body={
-            "removeLabelIds": [sweeps_label_id],
-            "addLabelIds": [processed_label_id],
-        },
-    ).execute()
-
     logger.info("Ingested job %s for user %s", job.id, user.email)
     return job
 
 
-async def poll_user_gmail(db: AsyncSession, user: User) -> int:
+async def poll_user_gmail(db: AsyncSession, user: User) -> GmailPollResult:
     refresh_token = get_user_refresh_token(user)
     if not refresh_token:
-        return 0
+        return GmailPollResult(ingested=0, label_found=False)
 
     try:
         service = _build_gmail_service(refresh_token)
+    except RefreshError as e:
+        logger.error("Gmail auth failed for %s: %s", user.email, e)
+        return GmailPollResult(ingested=0, label_found=False, needs_reauth=True)
     except Exception as e:
         logger.error("Gmail auth failed for %s: %s", user.email, e)
-        return 0
+        return GmailPollResult(ingested=0, label_found=False)
 
     sweeps_label_id = _get_label_id_by_name(service, SWEEPS_LABEL)
     if not sweeps_label_id:
         logger.debug("No Sweeps label for %s", user.email)
-        return 0
-
-    processed_label_id = _get_or_create_label(service, PROCESSED_LABEL)
+        return GmailPollResult(ingested=0, label_found=False)
 
     results = (
         service.users()
@@ -161,14 +127,12 @@ async def poll_user_gmail(db: AsyncSession, user: User) -> int:
     count = 0
     for msg in messages:
         try:
-            job = await ingest_message(
-                db, user, msg["id"], service, sweeps_label_id, processed_label_id
-            )
+            job = await ingest_message(db, user, msg["id"], service)
             if job:
                 count += 1
         except Exception as e:
             logger.error("Failed to ingest message %s: %s", msg["id"], e)
-    return count
+    return GmailPollResult(ingested=count, label_found=True)
 
 
 async def poll_all_users(db: AsyncSession) -> None:

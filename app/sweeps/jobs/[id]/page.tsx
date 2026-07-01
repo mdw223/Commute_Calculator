@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import {
   computeCommute,
   createTentativeEvent,
@@ -29,6 +30,7 @@ export default function JobDetailPage() {
   const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [confirmDismiss, setConfirmDismiss] = useState(false);
 
   useEffect(() => {
     getJob(id)
@@ -151,7 +153,7 @@ export default function JobDetailPage() {
           )}
           <button
             type="button"
-            onClick={() => handleStatus("dismissed")}
+            onClick={() => setConfirmDismiss(true)}
             className="border-2 border-ink px-4 py-2 font-mono text-xs uppercase text-muted"
           >
             Dismiss
@@ -169,6 +171,19 @@ export default function JobDetailPage() {
         </div>
         {actionMsg && <p className="font-mono text-xs text-muted">{actionMsg}</p>}
       </main>
+
+      <ConfirmDialog
+        open={confirmDismiss}
+        title="Dismiss this job?"
+        message={`"${job.category ?? "Sweeps Job"}" will be removed from your active list.`}
+        confirmLabel="Dismiss"
+        onConfirm={() => {
+          setConfirmDismiss(false);
+          handleStatus("dismissed");
+        }}
+        onCancel={() => setConfirmDismiss(false)}
+      />
+
       <SiteFooter />
     </div>
   );

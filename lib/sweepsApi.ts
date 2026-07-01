@@ -2,6 +2,7 @@ import type {
   CalendarConflict,
   CommuteResult,
   DayPlan,
+  GmailSyncResult,
   PlanRouteResult,
   SweepsJob,
   SweepsUser,
@@ -68,6 +69,10 @@ export async function updateProfile(data: Partial<SweepsUser>): Promise<SweepsUs
 export async function listJobs(status?: string): Promise<SweepsJob[]> {
   const q = status ? `?status=${status}` : "";
   return apiFetch<SweepsJob[]>(`/jobs${q}`);
+}
+
+export async function syncGmail(): Promise<GmailSyncResult> {
+  return apiFetch<GmailSyncResult>("/jobs/sync", { method: "POST" });
 }
 
 export async function getJob(id: string): Promise<SweepsJob> {

@@ -149,3 +149,9 @@ class DayPlanItem(BaseModel):
 class DayPlanResponse(BaseModel):
     date: str
     items: list[DayPlanItem]
+
+
+class GmailSyncOut(BaseModel):
+    ingested: int
+    label_found: bool
+    needs_reauth: bool = False
