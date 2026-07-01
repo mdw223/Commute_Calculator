@@ -7,7 +7,7 @@ import SiteFooter from "@/components/SiteFooter";
 import JobCard from "@/components/sweeps/JobCard";
 import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
 import { useSweeps } from "@/components/sweeps/SweepsProvider";
-import { computeCommute, getGoogleLoginUrl, useGeolocation } from "@/lib/sweepsApi";
+import { computeCommute, getGoogleLoginUrl } from "@/lib/sweepsApi";
 import type { CommuteResult } from "@/types/sweeps";
 
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
@@ -24,35 +24,30 @@ export default function SweepsDashboard() {
     dismissJob,
     restoreJob,
     signOut,
+    origin,
   } = useSweeps();
 
   const [commutes, setCommutes] = useState<Record<string, CommuteResult>>({});
-  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [geoError, setGeoError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [dismissedOpen, setDismissedOpen] = useState(true);
   const [expiredOpen, setExpiredOpen] = useState(false);
 
-  useEffect(() => {
-    useGeolocation()
-      .then(setOrigin)
-      .catch(() => setGeoError("Enable location for drive-time estimates"));
-  }, []);
+  const originCoords = origin ? { lat: origin.lat, lng: origin.lng } : null;
 
   useEffect(() => {
-    if (!origin || activeJobs.length === 0) return;
+    if (!originCoords || activeJobs.length === 0) return;
     activeJobs.forEach(async (job) => {
       if (job.lat == null || job.lng == null) return;
       try {
-        const result = await computeCommute(job.id, origin);
+        const result = await computeCommute(job.id, originCoords);
         setCommutes((prev) => ({ ...prev, [job.id]: result }));
       } catch {
         // ignore per-job failures
       }
     });
-  }, [origin, activeJobs]);
+  }, [originCoords, activeJobs]);
 
   const handleDismiss = async (id: string) => {
     await dismissJob(id);
@@ -146,19 +141,16 @@ export default function SweepsDashboard() {
                 Active jobs ({activeJobs.length})
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  disabled={syncing}
-                  onClick={handleSync}
-                  className="border-2 border-ink bg-cta px-3 py-1 font-mono text-xs uppercase disabled:opacity-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-transform"
-                >
-                  {syncing ? "Checking…" : "Check Sweeps label"}
-                </button>
-                {geoError && (
-                  <span className="font-mono text-[10px] text-headline">{geoError}</span>
-                )}
-              </div>
+              <button
+                type="button"
+                disabled={syncing}
+                onClick={handleSync}
+                className="border-2 border-ink bg-cta px-3 py-1 font-mono text-xs uppercase disabled:opacity-50 hover:translate-x-0.5 hover:translate-y-0.5 transition-transform"
+              >
+                {syncing ? "Checking…" : "Check Sweeps label"}
+              </button>
             </div>
+          </div>
             {syncMessage && (
               <p className="font-mono text-xs text-muted">{syncMessage}</p>
             )}
@@ -241,7 +233,7 @@ export default function SweepsDashboard() {
           <h2 className="font-mono text-xs uppercase tracking-widest">Map</h2>
           <JobsMap
             jobs={activeJobs}
-            origin={origin}
+            origin={originCoords}
             selectedJobId={selectedId}
             onSelectJob={setSelectedId}
             routeGeometry={

@@ -1,5 +1,11 @@
 export type JobStatus = "new" | "considering" | "dismissed" | "expired";
 
+export interface SweepsOrigin {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
 export interface SweepsUser {
   id: string;
   email: string;

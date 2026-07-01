@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import SiteNav from "@/components/SiteNav";
@@ -9,7 +9,7 @@ import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
 import { useSweeps } from "@/components/sweeps/SweepsProvider";
 import { formatDuration, formatMiles } from "@/lib/calculations";
 import { googleMapsDirectionsUrl, type ResolvedStop } from "@/lib/externalMaps";
-import { planRoute, useGeolocation } from "@/lib/sweepsApi";
+import { planRoute } from "@/lib/sweepsApi";
 import type { PlanRouteResult } from "@/types/sweeps";
 import type { Stop } from "@/types";
 
@@ -66,15 +66,12 @@ function buildRouteStops(
 }
 
 export default function RoutePlannerPage() {
-  const { activeJobs, loading } = useSweeps();
+  const { activeJobs, loading, origin } = useSweeps();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [route, setRoute] = useState<PlanRouteResult | null>(null);
   const [planning, setPlanning] = useState(false);
 
-  useEffect(() => {
-    useGeolocation().then(setOrigin).catch(() => null);
-  }, []);
+  const originCoords = origin ? { lat: origin.lat, lng: origin.lng } : null;
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -87,10 +84,10 @@ export default function RoutePlannerPage() {
   };
 
   const handlePlan = async () => {
-    if (!origin || selected.size === 0) return;
+    if (!originCoords || selected.size === 0) return;
     setPlanning(true);
     try {
-      const result = await planRoute([...selected], origin);
+      const result = await planRoute([...selected], originCoords);
       setRoute(result);
     } finally {
       setPlanning(false);
@@ -99,7 +96,9 @@ export default function RoutePlannerPage() {
 
   const selectedJobs = activeJobs.filter((j) => selected.has(j.id));
   const mapStops =
-    route && origin ? buildRouteStops(origin, route.ordered_job_ids, activeJobs) : [];
+    route && originCoords
+      ? buildRouteStops(originCoords, route.ordered_job_ids, activeJobs)
+      : [];
   const resolvedStops = mapStops.filter(
     (s): s is ResolvedStop => s.coordinates !== null
   );
@@ -150,7 +149,7 @@ export default function RoutePlannerPage() {
             ))}
             <button
               type="button"
-              disabled={selected.size === 0 || !origin || planning}
+              disabled={selected.size === 0 || !originCoords || planning}
               onClick={handlePlan}
               className="border-2 border-ink bg-cta px-4 py-2 font-mono text-xs uppercase disabled:opacity-50"
             >
@@ -184,7 +183,7 @@ export default function RoutePlannerPage() {
             )}
             <JobsMap
               jobs={selectedJobs}
-              origin={origin}
+              origin={originCoords}
               routeGeometry={route?.geometry ?? null}
               height="400px"
             />

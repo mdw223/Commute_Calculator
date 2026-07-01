@@ -10,6 +10,7 @@ interface StopInputProps {
   onMapPickRequest?: (initialQuery: string) => void;
   geocodeFocus?: Coordinates | null;
   placeholder?: string;
+  compact?: boolean;
 }
 
 export default function StopInput({
@@ -19,6 +20,7 @@ export default function StopInput({
   onMapPickRequest,
   geocodeFocus,
   placeholder = "Start typing an address…",
+  compact = false,
 }: StopInputProps) {
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -83,13 +85,20 @@ export default function StopInput({
   }
 
   const showDropdown = open && (suggestions.length > 0 || onMapPickRequest);
+  const inputClass = compact
+    ? "w-full border-2 border-ink bg-surface px-2 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-headline"
+    : "w-full border-3 border-ink bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-headline";
 
   return (
     <div ref={wrapperRef} className="relative">
-      <label className="block font-mono text-xs uppercase tracking-wider text-ink mb-1">
-        {label}
-      </label>
-      <div className="flex gap-2">
+      {compact ? (
+        <label className="sr-only">{label}</label>
+      ) : (
+        <label className="block font-mono text-xs uppercase tracking-wider text-ink mb-1">
+          {label}
+        </label>
+      )}
+      <div className={compact ? "relative" : "flex gap-2"}>
         <div className="relative flex-1">
           <input
             type="text"
@@ -98,17 +107,22 @@ export default function StopInput({
             onFocus={() => {
               if (suggestions.length > 0 || onMapPickRequest) setOpen(true);
             }}
-            placeholder={placeholder}
-            className="w-full border-3 border-ink bg-surface px-3 py-2 text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-headline"
+            placeholder={compact ? placeholder || label : placeholder}
+            aria-label={compact ? label : undefined}
+            className={inputClass}
             autoComplete="off"
           />
           {loading && (
-            <span className="absolute right-3 top-2.5 text-xs text-muted font-mono">
+            <span
+              className={`absolute right-2 text-xs text-muted font-mono ${
+                compact ? "top-1.5" : "top-2.5"
+              }`}
+            >
               …
             </span>
           )}
         </div>
-        {onMapPickRequest && (
+        {!compact && onMapPickRequest && (
           <button
             type="button"
             onClick={openMapPicker}
@@ -120,7 +134,11 @@ export default function StopInput({
         )}
       </div>
       {showDropdown && (
-        <ul className="absolute z-50 w-full mt-1 border-3 border-ink bg-surface shadow-brutal max-h-48 overflow-y-auto">
+        <ul
+          className={`absolute z-50 w-full border-3 border-ink bg-surface shadow-brutal max-h-48 overflow-y-auto ${
+            compact ? "left-0 right-0 mt-1 min-w-[16rem]" : "mt-1"
+          }`}
+        >
           {suggestions.map((s, i) => (
             <li key={i}>
               <button

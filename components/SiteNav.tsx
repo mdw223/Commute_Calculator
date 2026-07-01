@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import SweepsNavLocation from "@/components/sweeps/SweepsNavLocation";
 
 export default function SiteNav() {
   const pathname = usePathname();
@@ -18,12 +19,15 @@ export default function SiteNav() {
           ← Back to commute
         </Link>
       ) : isSweepsPage ? (
-        <Link
-          href="/"
-          className="inline-block border-3 border-ink bg-surface px-4 py-2 font-mono text-xs uppercase hover:bg-cta/20 transition-colors shadow-brutal-sm"
-        >
-          ← Commute calculator
-        </Link>
+        <div className="flex flex-wrap items-center gap-50 flex-1 min-w-0">
+          <Link
+            href="/"
+            className="inline-block border-3 border-ink bg-surface px-4 py-2 font-mono text-xs uppercase hover:bg-cta/20 transition-colors shadow-brutal-sm shrink-0"
+          >
+            ← Commute calculator
+          </Link>
+          <SweepsNavLocation />
+        </div>
       ) : (
         <>
           <Link

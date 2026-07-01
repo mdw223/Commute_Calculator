@@ -13,8 +13,8 @@ import {
   getCalendarConflicts,
   getJob,
   updateJob,
-  useGeolocation,
 } from "@/lib/sweepsApi";
+import { useSweeps } from "@/components/sweeps/SweepsProvider";
 import { formatCurrency, formatDuration, formatMiles } from "@/lib/calculations";
 import type { CalendarConflict, CommuteResult, SweepsJob } from "@/types/sweeps";
 
@@ -27,10 +27,14 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<SweepsJob | null>(null);
   const [commute, setCommute] = useState<CommuteResult | null>(null);
   const [conflicts, setConflicts] = useState<CalendarConflict | null>(null);
-  const [origin, setOrigin] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [confirmDismiss, setConfirmDismiss] = useState(false);
+  const { origin: sweepsOrigin } = useSweeps();
+
+  const originCoords = sweepsOrigin
+    ? { lat: sweepsOrigin.lat, lng: sweepsOrigin.lng }
+    : null;
 
   useEffect(() => {
     getJob(id)
@@ -43,13 +47,9 @@ export default function JobDetailPage() {
   }, [id, router]);
 
   useEffect(() => {
-    useGeolocation().then(setOrigin).catch(() => null);
-  }, []);
-
-  useEffect(() => {
-    if (!origin || !job) return;
-    computeCommute(job.id, origin).then(setCommute).catch(() => null);
-  }, [origin, job]);
+    if (!originCoords || !job) return;
+    computeCommute(job.id, originCoords).then(setCommute).catch(() => null);
+  }, [originCoords, job]);
 
   const handleStatus = async (status: string) => {
     const updated = await updateJob(id, { status });
@@ -131,7 +131,7 @@ export default function JobDetailPage() {
         )}
 
         {job.lat != null && job.lng != null && (
-          <JobsMap jobs={[job]} origin={origin} routeGeometry={commute?.geometry ?? null} />
+          <JobsMap jobs={[job]} origin={originCoords} routeGeometry={commute?.geometry ?? null} />
         )}
 
         <div className="flex flex-wrap gap-2">
