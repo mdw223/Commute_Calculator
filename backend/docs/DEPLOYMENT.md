@@ -8,7 +8,10 @@ Hybrid setup: **Next.js on Vercel** + **Python backend on a VPS** (Contabo). Rai
 | Sweeps API | Contabo VPS (`vmi3257883`) | `https://api-jobs.tritechhelp.com` |
 | Postgres | Docker (internal network) | not exposed publicly |
 
-**Reverse proxy:** host nginx on the VPS (Path B — gateway). Nginx config lives in `/etc/nginx/sites-available/`, not in this repo.
+**Reverse proxy:** host nginx on the VPS (Path B — gateway).
+
+- Operator architecture: [`/root/docs/vps-edge-proxy.md`](/root/docs/vps-edge-proxy.md)
+- Versioned site config in this repo: [`deploy/nginx/api-jobs.tritechhelp.com.conf`](../../deploy/nginx/api-jobs.tritechhelp.com.conf) → install to `/etc/nginx/sites-available/`
 
 ---
 
@@ -104,14 +107,14 @@ cp backend/.env.example backend/.env
 # nano backend/.env
 ```
 
-`docker-compose.yml` already binds the API to localhost only:
+`docker-compose.yml` binds the API to localhost only:
 
 ```yaml
 ports:
   - "127.0.0.1:8000:8000"
 ```
 
-Postgres has no public port — the backend reaches it on the internal Docker network.
+Postgres stays on the Compose internal network (`db:5432`). On the shared Contabo VPS the host publish of Postgres is **commented out** (ICS already uses `127.0.0.1:5432`). Uncomment that `ports` block (or use `127.0.0.1:5433:5432`) on a dedicated box / for local uvicorn — see comments in `docker-compose.yml`.
 
 ### `backend/.env` (production)
 
@@ -146,6 +149,10 @@ curl http://127.0.0.1:8000/health
 ---
 
 ## 3. VPS — host nginx gateway
+
+Full shared-VPS layout: [`/root/docs/vps-edge-proxy.md`](/root/docs/vps-edge-proxy.md).
+
+Versioned config for this API: copy [`deploy/nginx/api-jobs.tritechhelp.com.conf`](../../deploy/nginx/api-jobs.tritechhelp.com.conf) to `/etc/nginx/sites-available/api-jobs.tritechhelp.com`, symlink into `sites-enabled/`, then `nginx -t && systemctl reload nginx`.
 
 If another project already owns ports 80/443 via Docker nginx, migrate to host nginx first.
 
@@ -441,10 +448,11 @@ JWT is delivered via URL **hash fragment** (`/sweeps/auth/callback#token=...`) s
 ## Pre-flight checklist
 
 - [ ] DNS A record `api-jobs` → VPS IP
-- [ ] `api_service_prod` on `127.0.0.1:3000`; Docker nginx no longer on 80/443 (if sharing VPS)
-- [ ] Host nginx site configs in `/etc/nginx/sites-available/`
+- [ ] `api_service_prod` on `127.0.0.1:3000`; Docker nginx `proxy` commented out in ICS `compose.prod.yml` (if sharing VPS)
+- [ ] Host nginx site configs from `deploy/nginx/` in `/etc/nginx/sites-available/`
+- [ ] Architecture doc: `/root/docs/vps-edge-proxy.md`
 - [ ] `sudo nginx -t` passes
-- [ ] `docker compose up -d` — API on `127.0.0.1:8000`
+- [ ] `docker compose up -d` — API on `127.0.0.1:8000` (Sweeps Postgres not publishing host 5432 beside ICS)
 - [ ] Certbot SSL for `api-jobs.tritechhelp.com`
 - [ ] `curl https://api-jobs.tritechhelp.com/health` OK
 - [ ] Google redirect URI + JS origin saved
