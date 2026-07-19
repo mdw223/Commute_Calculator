@@ -18,6 +18,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - sweeps_net
 
   backend:
     build: ./backend
@@ -31,6 +33,14 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    dns:
+      - 127.0.0.11
+    networks:
+      - sweeps_net
 
 volumes:
   sweeps_pg_data:
+
+networks:
+  sweeps_net:
+    driver: bridge
