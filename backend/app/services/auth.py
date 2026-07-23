@@ -67,8 +67,6 @@ async def upsert_google_user(
                 "hourlyRate": 20.0,
                 "includeHourlySalary": False,
                 "hourlySalary": 25.0,
-                "includeSideHustle": True,
-                "sideHustleRate": 20.0,
                 "roundTrip": True,
                 "frequency": {"count": 1, "unit": "day"},
             },

@@ -15,8 +15,6 @@ export default function SweepsSettingsPage() {
   const [buffer, setBuffer] = useState("30");
   const [mpg, setMpg] = useState("25");
   const [gasPrice, setGasPrice] = useState("3.5");
-  const [includeSideHustle, setIncludeSideHustle] = useState(true);
-  const [sideHustleRate, setSideHustleRate] = useState("20.00");
   const [includeHourlySalary, setIncludeHourlySalary] = useState(false);
   const [hourlySalary, setHourlySalary] = useState("25.00");
   const [saved, setSaved] = useState(false);
@@ -28,10 +26,6 @@ export default function SweepsSettingsPage() {
     const cs = user.cost_settings as Record<string, number | boolean>;
     if (cs.mpg) setMpg(String(cs.mpg));
     if (cs.gasPricePerGallon) setGasPrice(String(cs.gasPricePerGallon));
-    if (typeof cs.includeSideHustle === "boolean") {
-      setIncludeSideHustle(cs.includeSideHustle);
-    }
-    if (cs.sideHustleRate) setSideHustleRate(formatSalaryInput(cs.sideHustleRate as number));
     if (typeof cs.includeHourlySalary === "boolean") {
       setIncludeHourlySalary(cs.includeHourlySalary);
     }
@@ -49,8 +43,6 @@ export default function SweepsSettingsPage() {
         mpg: parseSalaryInput(mpg) ?? 25,
         gasPricePerGallon: parseSalaryInput(gasPrice) ?? 3.5,
         roundTrip: true,
-        includeSideHustle,
-        sideHustleRate: parseSalaryInput(sideHustleRate) ?? 20,
         includeHourlySalary,
         hourlySalary: parseSalaryInput(hourlySalary) ?? 25,
       },
@@ -131,48 +123,6 @@ export default function SweepsSettingsPage() {
               onChange={(e) => setGasPrice(e.target.value)}
               placeholder="3.50"
               className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="border-2 border-ink bg-cta px-4 py-2 font-mono text-xs uppercase"
-          >
-            Save
-          </button>
-          {saved && <p className="font-mono text-xs text-muted">Saved!</p>}
-        </section>
-
-        <section className="border-3 border-ink p-6 shadow-brutal space-y-4">
-          <h2 className="font-mono text-xs uppercase">Side hustle opportunity cost</h2>
-          <p className="text-sm text-muted">
-            While you&apos;re driving to a job, you could be earning money another
-            way instead. If a job&apos;s pay doesn&apos;t cover that opportunity
-            cost plus gas, we&apos;ll flag it as not worth it. Same setting as the{" "}
-            <Link href="/" className="underline">
-              commute calculator
-            </Link>
-            &apos;s hustle rate.
-          </p>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={includeSideHustle}
-              onChange={(e) => setIncludeSideHustle(e.target.checked)}
-              className="border-2 border-ink"
-            />
-            Factor in side hustle opportunity cost
-          </label>
-          <label className="block text-sm">
-            Your hustle rate ($/hr)
-            <input
-              type="text"
-              inputMode="decimal"
-              value={sideHustleRate}
-              onChange={(e) => setSideHustleRate(e.target.value)}
-              disabled={!includeSideHustle}
-              placeholder="20.00"
-              className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono disabled:opacity-50"
             />
           </label>
           <button

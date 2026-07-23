@@ -21,8 +21,6 @@ class CostSettingsSchema(BaseModel):
     hourlyRate: float = 20.0
     includeHourlySalary: bool = False
     hourlySalary: float = 25.0
-    includeSideHustle: bool = True
-    sideHustleRate: float = 20.0
     roundTrip: bool = True
     frequency: dict = Field(default_factory=lambda: {"count": 1, "unit": "day"})
 

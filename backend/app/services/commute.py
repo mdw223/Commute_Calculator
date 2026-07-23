@@ -44,9 +44,6 @@ def analyze_job_worth_it(
     drive_hours = duration_minutes / 60 if duration_minutes > 0 else 0
     net_profit = job_pay - trip_cost
 
-    side_hustle_rate = cost_settings.get("sideHustleRate", 20.0)
-    include_side_hustle = cost_settings.get("includeSideHustle", True)
-
     mood = "meh"
     headline = "BORDERLINE"
     subline = "Pay barely covers the drive. Your call."
@@ -63,16 +60,6 @@ def analyze_job_worth_it(
         mood = "meh"
         headline = "BORDERLINE"
         subline = f"Only ~${net_profit:.2f} profit after gas. Meh."
-
-    if include_side_hustle and side_hustle_rate > 0 and drive_hours > 0:
-        opportunity_cost = drive_hours * side_hustle_rate
-        if job_pay < opportunity_cost + trip_cost:
-            mood = "bad"
-            headline = "NOT WORTH IT"
-            subline = (
-                f"${job_pay:.0f} pay < ${opportunity_cost:.0f} drive time "
-                f"+ ${trip_cost:.2f} gas. Skip."
-            )
 
     effective_hourly_rate = None
     total_hours = None
