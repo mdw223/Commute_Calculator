@@ -41,7 +41,9 @@ export default function JobDetailPage() {
     originLat != null && originLng != null
       ? { lat: originLat, lng: originLng }
       : null;
-  const commute = useJobCommute(job?.id ?? null, originLat, originLng, commuteRefreshKey);
+  // Use the URL id directly (not job?.id) so the commute request fires in
+  // parallel with getJob instead of waiting for it to resolve first.
+  const commute = useJobCommute(id, originLat, originLng, commuteRefreshKey);
 
   useEffect(() => {
     getJob(id)

@@ -154,20 +154,11 @@ async def get_job(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Calendar conflict is intentionally not computed here (it's a slow, live
+    # Google Calendar call) — callers that need it use GET /jobs/{id}/calendar/conflicts,
+    # which the job detail page already fetches in parallel.
     job = await _get_user_job(db, user, job_id)
-    events = []
-    if job.start_at:
-        events = await get_calendar_events(
-            user,
-            job.start_at - timedelta(days=1),
-            job.start_at + timedelta(days=1),
-        )
-    conflict = (
-        check_job_conflicts(job, events, user.travel_buffer_minutes)["has_conflict"]
-        if events
-        else None
-    )
-    return _job_to_out(job, conflict)
+    return _job_to_out(job)
 
 
 @router.patch("/jobs/{job_id}", response_model=JobOut)
