@@ -56,6 +56,7 @@ export interface CommuteResult {
   effective_hourly_rate: number | null;
   total_time_hours: number | null;
   current_job_earnings: number | null;
+  total_job_pay: number | null;
   geometry?: [number, number][] | null;
 }
 

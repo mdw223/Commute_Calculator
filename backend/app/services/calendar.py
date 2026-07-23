@@ -183,7 +183,7 @@ async def create_tentative_event(user: User, job: Job) -> str:
         "summary": f"[Sweeps] {job.category or 'Job'} — {job.street or job.full_address}",
         "description": (
             f"{job.details or ''}\n\n"
-            f"Pay: ${job.pay_amount or user.default_job_pay:.0f}\n"
+            f"Pay: ${job.pay_amount or user.default_job_pay:.0f}/hr\n"
             f"{job.job_url or ''}"
         ),
         "location": job.full_address or "",

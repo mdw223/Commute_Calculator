@@ -86,7 +86,7 @@ export default function SweepsSettingsPage() {
         <section className="border-3 border-ink p-6 shadow-brutal space-y-4">
           <h2 className="font-mono text-xs uppercase">Job &amp; drive defaults</h2>
           <label className="block text-sm">
-            Default Sweeps pay ($)
+            Default Sweeps pay ($/hr)
             <input
               type="text"
               inputMode="decimal"
@@ -96,6 +96,10 @@ export default function SweepsSettingsPage() {
               className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono"
             />
           </label>
+          <p className="text-xs text-muted -mt-2">
+            Used as the hourly rate for new jobs. Total pay for a job = this rate ×
+            the job&apos;s estimated duration (assumed 1 hour if unset).
+          </p>
           <label className="block text-sm">
             Travel buffer before jobs (minutes)
             <input

@@ -204,7 +204,13 @@ async def compute_job_commute(
     if job.lat is None or job.lng is None:
         raise HTTPException(status_code=400, detail="Job location not geocoded")
 
-    pay = job.pay_amount or user.default_job_pay
+    # Pay is an hourly rate; total pay scales with estimated job duration.
+    # Jobs without an estimated duration are assumed to be 1 hour.
+    hourly_pay = job.pay_amount or user.default_job_pay
+    job_duration_minutes = (
+        job.duration_minutes if job.duration_minutes and job.duration_minutes > 0 else 60.0
+    )
+    total_job_pay = hourly_pay * (job_duration_minutes / 60)
     try:
         result = await compute_commute(
             body.origin_lat,
@@ -212,9 +218,9 @@ async def compute_job_commute(
             job.lat,
             job.lng,
             user.cost_settings,
-            pay,
+            total_job_pay,
             body.round_trip,
-            job_duration_minutes=job.duration_minutes,
+            job_duration_minutes=job_duration_minutes,
         )
     except ValueError as e:
         msg = str(e)
@@ -240,6 +246,7 @@ async def compute_job_commute(
         effective_hourly_rate=result.get("effective_hourly_rate"),
         total_time_hours=result.get("total_time_hours"),
         current_job_earnings=result.get("current_job_earnings"),
+        total_job_pay=round(total_job_pay, 2),
         geometry=result.get("geometry"),
     )
 

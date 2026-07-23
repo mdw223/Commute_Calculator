@@ -115,7 +115,14 @@ export default function JobDetailPage() {
           <p className="mt-2">{job.full_address}</p>
           <p className="mt-3 text-sm">{job.details}</p>
           <p className="mt-2 font-mono text-sm">
-            Pay: {formatCurrency(job.pay_amount ?? 20)}
+            Pay: {formatCurrency(job.pay_amount ?? 20)}/hr
+            {commute?.total_job_pay != null && (
+              <>
+                {" "}
+                · Total for {formatHours((job.duration_minutes ?? 60) / 60)}:{" "}
+                {formatCurrency(commute.total_job_pay)}
+              </>
+            )}
           </p>
 
           <div className="mt-4 border-t-2 border-ink pt-3">
@@ -152,8 +159,9 @@ export default function JobDetailPage() {
             <p className="text-xs text-muted mt-2">
               {job.duration_minutes != null
                 ? "Parsed from the job email — edit if it looks off."
-                : "Not included in the job email — enter your best guess."}{" "}
-              Powers the effective $/hr and current-job-wage comparison below.
+                : "Not included in the job email — assumed 1 hour until you set it."}{" "}
+              Pay is per hour, so total pay, net, and the effective $/hr below all scale
+              with this.
             </p>
           </div>
         </header>
@@ -177,7 +185,7 @@ export default function JobDetailPage() {
                   <div>
                     Total time:{" "}
                     {formatDuration(
-                      (job.duration_minutes ?? 0) + commute.duration_minutes
+                      (job.duration_minutes ?? 60) + commute.duration_minutes
                     )}{" "}
                     (job + drive)
                   </div>

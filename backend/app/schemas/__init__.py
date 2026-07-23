@@ -99,6 +99,7 @@ class CommuteResponse(BaseModel):
     effective_hourly_rate: float | None = None
     total_time_hours: float | None = None
     current_job_earnings: float | None = None
+    total_job_pay: float | None = None
     geometry: list[list[float]] | None = None
 
 
