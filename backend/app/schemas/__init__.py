@@ -78,6 +78,7 @@ class JobOut(BaseModel):
 class JobUpdate(BaseModel):
     status: JobStatusEnum | None = None
     pay_amount: float | None = None
+    duration_minutes: float | None = None
 
 
 class CommuteRequest(BaseModel):
@@ -95,6 +96,9 @@ class CommuteResponse(BaseModel):
     worth_it_headline: str
     worth_it_subline: str
     net_profit: float
+    effective_hourly_rate: float | None = None
+    total_time_hours: float | None = None
+    current_job_earnings: float | None = None
     geometry: list[list[float]] | None = None
 
 

@@ -27,6 +27,7 @@ def calculate_trip_cost(
         "distance_miles": miles,
         "duration_minutes": minutes,
         "gas_cost": round(gas_cost, 2),
+        "maintenance_cost": round(maintenance_cost, 2),
         "trip_cost": round(trip_cost, 2),
     }
 
@@ -36,6 +37,8 @@ def analyze_job_worth_it(
     job_pay: float,
     duration_minutes: float,
     cost_settings: dict,
+    job_duration_minutes: float | None = None,
+    hard_cost: float | None = None,
 ) -> dict:
     """Worth-it analysis for a Sweeps job: compare pay vs drive cost."""
     drive_hours = duration_minutes / 60 if duration_minutes > 0 else 0
@@ -71,11 +74,40 @@ def analyze_job_worth_it(
                 f"+ ${trip_cost:.2f} gas. Skip."
             )
 
+    effective_hourly_rate = None
+    total_hours = None
+    current_job_earnings = None
+    if (
+        cost_settings.get("includeHourlySalary")
+        and job_duration_minutes
+        and job_duration_minutes > 0
+    ):
+        total_hours = (job_duration_minutes / 60) + drive_hours
+        cost_for_rate = hard_cost if hard_cost is not None else trip_cost
+        if total_hours > 0:
+            effective_hourly_rate = (job_pay - cost_for_rate) / total_hours
+            current_wage = cost_settings.get("hourlySalary", 25.0)
+            current_job_earnings = current_wage * total_hours
+            if current_wage > 0 and effective_hourly_rate < current_wage:
+                mood = "bad"
+                headline = "NOT WORTH IT"
+                subline = (
+                    f"Effective ${effective_hourly_rate:.2f}/hr over {total_hours:.1f}h "
+                    f"(job + drive) vs your ${current_wage:.2f}/hr job. Skip."
+                )
+
     return {
         "worth_it_mood": mood,
         "worth_it_headline": headline,
         "worth_it_subline": subline,
         "net_profit": round(net_profit, 2),
+        "effective_hourly_rate": (
+            round(effective_hourly_rate, 2) if effective_hourly_rate is not None else None
+        ),
+        "total_time_hours": round(total_hours, 2) if total_hours is not None else None,
+        "current_job_earnings": (
+            round(current_job_earnings, 2) if current_job_earnings is not None else None
+        ),
     }
 
 
@@ -87,14 +119,21 @@ async def compute_commute(
     cost_settings: dict,
     job_pay: float,
     round_trip: bool = True,
+    job_duration_minutes: float | None = None,
 ) -> dict:
     route = await get_directions([(origin_lng, origin_lat), (dest_lng, dest_lat)])
     distance_miles = meters_to_miles(route["distance_meters"])
     duration_minutes = seconds_to_minutes(route["duration_seconds"])
 
     costs = calculate_trip_cost(distance_miles, duration_minutes, cost_settings, round_trip)
+    hard_cost = costs["gas_cost"] + costs.get("maintenance_cost", 0)
     worth = analyze_job_worth_it(
-        costs["trip_cost"], job_pay, costs["duration_minutes"], cost_settings
+        costs["trip_cost"],
+        job_pay,
+        costs["duration_minutes"],
+        cost_settings,
+        job_duration_minutes=job_duration_minutes,
+        hard_cost=hard_cost,
     )
 
     return {

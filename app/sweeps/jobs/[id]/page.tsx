@@ -15,7 +15,8 @@ import {
 } from "@/lib/sweepsApi";
 import { useJobCommute } from "@/lib/useJobCommutes";
 import { useSweeps } from "@/components/sweeps/SweepsProvider";
-import { formatCurrency, formatDuration, formatMiles } from "@/lib/calculations";
+import { formatCurrency, formatDuration, formatHours, formatMiles } from "@/lib/calculations";
+import { formatSalaryInput, parseSalaryInput } from "@/lib/salary";
 import type { CalendarConflict, SweepsJob } from "@/types/sweeps";
 
 const JobsMap = dynamic(() => import("@/components/sweeps/JobsMap"), { ssr: false });
@@ -29,6 +30,9 @@ export default function JobDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [confirmDismiss, setConfirmDismiss] = useState(false);
+  const [durationInput, setDurationInput] = useState("");
+  const [savingDuration, setSavingDuration] = useState(false);
+  const [commuteRefreshKey, setCommuteRefreshKey] = useState(0);
   const { origin: sweepsOrigin } = useSweeps();
 
   const originLat = sweepsOrigin?.lat ?? null;
@@ -37,7 +41,7 @@ export default function JobDetailPage() {
     originLat != null && originLng != null
       ? { lat: originLat, lng: originLng }
       : null;
-  const commute = useJobCommute(job?.id ?? null, originLat, originLng);
+  const commute = useJobCommute(job?.id ?? null, originLat, originLng, commuteRefreshKey);
 
   useEffect(() => {
     getJob(id)
@@ -48,6 +52,10 @@ export default function JobDetailPage() {
       .then(setConflicts)
       .catch(() => null);
   }, [id, router]);
+
+  useEffect(() => {
+    setDurationInput(job?.duration_minutes ? formatSalaryInput(job.duration_minutes / 60) : "");
+  }, [job?.id]);
 
   const handleStatus = async (status: string) => {
     const updated = await updateJob(id, { status });
@@ -60,6 +68,23 @@ export default function JobDetailPage() {
     const updated = await getJob(id);
     setJob(updated);
     setActionMsg("Tentative calendar event created");
+  };
+
+  const handleDurationSave = async () => {
+    const hours = parseSalaryInput(durationInput);
+    const minutes = hours != null ? Math.round(hours * 60) : 0;
+    setSavingDuration(true);
+    try {
+      const updated = await updateJob(id, { duration_minutes: minutes });
+      setJob(updated);
+      setDurationInput(
+        updated.duration_minutes ? formatSalaryInput(updated.duration_minutes / 60) : ""
+      );
+      setCommuteRefreshKey((k) => k + 1);
+      setActionMsg(minutes > 0 ? "Estimated job time saved" : "Estimated job time cleared");
+    } finally {
+      setSavingDuration(false);
+    }
   };
 
   if (loading || !job) {
@@ -92,6 +117,45 @@ export default function JobDetailPage() {
           <p className="mt-2 font-mono text-sm">
             Pay: {formatCurrency(job.pay_amount ?? 20)}
           </p>
+
+          <div className="mt-4 border-t-2 border-ink pt-3">
+            <label
+              htmlFor="job-duration-input"
+              className="block font-mono text-xs uppercase mb-1"
+            >
+              Estimated job time (hours)
+            </label>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                id="job-duration-input"
+                type="text"
+                inputMode="decimal"
+                value={durationInput}
+                onChange={(e) => setDurationInput(e.target.value)}
+                placeholder="e.g. 2.5"
+                className="w-28 border-2 border-ink px-3 py-2 font-mono text-sm"
+              />
+              <button
+                type="button"
+                onClick={handleDurationSave}
+                disabled={savingDuration}
+                className="border-2 border-ink px-3 py-2 font-mono text-xs uppercase bg-cta hover:bg-cta/80 disabled:opacity-50"
+              >
+                {savingDuration ? "Saving…" : "Save"}
+              </button>
+              {job.duration_minutes != null && (
+                <span className="font-mono text-xs text-muted">
+                  Currently ~{formatHours(job.duration_minutes / 60)}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted mt-2">
+              {job.duration_minutes != null
+                ? "Parsed from the job email — edit if it looks off."
+                : "Not included in the job email — enter your best guess."}{" "}
+              Powers the effective $/hr and current-job-wage comparison below.
+            </p>
+          </div>
         </header>
 
         {commute && (
@@ -105,7 +169,30 @@ export default function JobDetailPage() {
               <div>Time: {formatDuration(commute.duration_minutes)}</div>
               <div>Gas: {formatCurrency(commute.gas_cost)}</div>
               <div>Net: {formatCurrency(commute.net_profit)}</div>
+              {commute.effective_hourly_rate != null && (
+                <>
+                  <div>
+                    Effective: {formatCurrency(commute.effective_hourly_rate)}/hr
+                  </div>
+                  <div>
+                    Total time:{" "}
+                    {formatDuration(
+                      (job.duration_minutes ?? 0) + commute.duration_minutes
+                    )}{" "}
+                    (job + drive)
+                  </div>
+                </>
+              )}
             </div>
+            {commute.current_job_earnings != null && commute.total_time_hours != null && (
+              <div className="sm:col-span-2 border-t-2 border-ink pt-3 font-mono text-sm">
+                In that same {formatHours(commute.total_time_hours)} (job + drive), your
+                current job would pay{" "}
+                <strong>{formatCurrency(commute.current_job_earnings)}</strong> — this
+                Sweeps job nets{" "}
+                <strong>{formatCurrency(commute.net_profit)}</strong>.
+              </div>
+            )}
           </section>
         )}
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { formatCurrency, formatDuration, formatMiles } from "@/lib/calculations";
+import { formatCurrency, formatDuration, formatHours, formatMiles } from "@/lib/calculations";
 import { moodColors } from "@/components/share/shareCardStyles";
 import type { CommuteResult } from "@/types/sweeps";
 import type { SweepsJob } from "@/types/sweeps";
@@ -87,6 +87,19 @@ export default function JobCard({
             <span className="text-muted block">Net</span>
             {formatCurrency(commute.net_profit)}
           </div>
+          {commute.effective_hourly_rate != null && (
+            <div>
+              <span className="text-muted block">Effective</span>
+              {formatCurrency(commute.effective_hourly_rate)}/hr
+            </div>
+          )}
+          {commute.current_job_earnings != null && commute.total_time_hours != null && (
+            <div>
+              <span className="text-muted block">Your job pays</span>
+              {formatCurrency(commute.current_job_earnings)} in{" "}
+              {formatHours(commute.total_time_hours)}
+            </div>
+          )}
         </div>
       )}
 

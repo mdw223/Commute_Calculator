@@ -7,36 +7,52 @@ import SiteFooter from "@/components/SiteFooter";
 import SweepsSubnav from "@/components/sweeps/SweepsSubnav";
 import { useSweeps } from "@/components/sweeps/SweepsProvider";
 import { updateProfile } from "@/lib/sweepsApi";
+import { formatSalaryInput, parseSalaryInput } from "@/lib/salary";
 
 export default function SweepsSettingsPage() {
   const { user, setUser, loading } = useSweeps();
-  const [defaultPay, setDefaultPay] = useState(20);
-  const [buffer, setBuffer] = useState(30);
-  const [mpg, setMpg] = useState(25);
-  const [gasPrice, setGasPrice] = useState(3.5);
+  const [defaultPay, setDefaultPay] = useState("20");
+  const [buffer, setBuffer] = useState("30");
+  const [mpg, setMpg] = useState("25");
+  const [gasPrice, setGasPrice] = useState("3.5");
+  const [includeSideHustle, setIncludeSideHustle] = useState(true);
+  const [sideHustleRate, setSideHustleRate] = useState("20.00");
+  const [includeHourlySalary, setIncludeHourlySalary] = useState(false);
+  const [hourlySalary, setHourlySalary] = useState("25.00");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    setDefaultPay(user.default_job_pay);
-    setBuffer(user.travel_buffer_minutes);
-    const cs = user.cost_settings as Record<string, number>;
-    if (cs.mpg) setMpg(cs.mpg);
-    if (cs.gasPricePerGallon) setGasPrice(cs.gasPricePerGallon);
+    setDefaultPay(String(user.default_job_pay));
+    setBuffer(String(user.travel_buffer_minutes));
+    const cs = user.cost_settings as Record<string, number | boolean>;
+    if (cs.mpg) setMpg(String(cs.mpg));
+    if (cs.gasPricePerGallon) setGasPrice(String(cs.gasPricePerGallon));
+    if (typeof cs.includeSideHustle === "boolean") {
+      setIncludeSideHustle(cs.includeSideHustle);
+    }
+    if (cs.sideHustleRate) setSideHustleRate(formatSalaryInput(cs.sideHustleRate as number));
+    if (typeof cs.includeHourlySalary === "boolean") {
+      setIncludeHourlySalary(cs.includeHourlySalary);
+    }
+    if (cs.hourlySalary) setHourlySalary(formatSalaryInput(cs.hourlySalary as number));
   }, [user]);
 
   const handleSave = async () => {
     if (!user) return;
+    const parsedDefaultPay = parseSalaryInput(defaultPay) ?? 20;
     const updated = await updateProfile({
-      default_job_pay: defaultPay,
-      travel_buffer_minutes: buffer,
+      default_job_pay: parsedDefaultPay,
+      travel_buffer_minutes: Math.round(parseSalaryInput(buffer) ?? 30),
       cost_settings: {
         ...user.cost_settings,
-        mpg,
-        gasPricePerGallon: gasPrice,
+        mpg: parseSalaryInput(mpg) ?? 25,
+        gasPricePerGallon: parseSalaryInput(gasPrice) ?? 3.5,
         roundTrip: true,
-        includeSideHustle: true,
-        sideHustleRate: defaultPay,
+        includeSideHustle,
+        sideHustleRate: parseSalaryInput(sideHustleRate) ?? 20,
+        includeHourlySalary,
+        hourlySalary: parseSalaryInput(hourlySalary) ?? 25,
       },
     });
     setUser(updated);
@@ -72,38 +88,124 @@ export default function SweepsSettingsPage() {
           <label className="block text-sm">
             Default Sweeps pay ($)
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={defaultPay}
-              onChange={(e) => setDefaultPay(Number(e.target.value))}
+              onChange={(e) => setDefaultPay(e.target.value)}
+              placeholder="20"
               className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono"
             />
           </label>
           <label className="block text-sm">
             Travel buffer before jobs (minutes)
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={buffer}
-              onChange={(e) => setBuffer(Number(e.target.value))}
+              onChange={(e) => setBuffer(e.target.value)}
+              placeholder="30"
               className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono"
             />
           </label>
           <label className="block text-sm">
             MPG
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={mpg}
-              onChange={(e) => setMpg(Number(e.target.value))}
+              onChange={(e) => setMpg(e.target.value)}
+              placeholder="25"
               className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono"
             />
           </label>
           <label className="block text-sm">
             Gas price ($/gal)
             <input
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={gasPrice}
-              onChange={(e) => setGasPrice(Number(e.target.value))}
+              onChange={(e) => setGasPrice(e.target.value)}
+              placeholder="3.50"
               className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="border-2 border-ink bg-cta px-4 py-2 font-mono text-xs uppercase"
+          >
+            Save
+          </button>
+          {saved && <p className="font-mono text-xs text-muted">Saved!</p>}
+        </section>
+
+        <section className="border-3 border-ink p-6 shadow-brutal space-y-4">
+          <h2 className="font-mono text-xs uppercase">Side hustle opportunity cost</h2>
+          <p className="text-sm text-muted">
+            While you&apos;re driving to a job, you could be earning money another
+            way instead. If a job&apos;s pay doesn&apos;t cover that opportunity
+            cost plus gas, we&apos;ll flag it as not worth it. Same setting as the{" "}
+            <Link href="/" className="underline">
+              commute calculator
+            </Link>
+            &apos;s hustle rate.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={includeSideHustle}
+              onChange={(e) => setIncludeSideHustle(e.target.checked)}
+              className="border-2 border-ink"
+            />
+            Factor in side hustle opportunity cost
+          </label>
+          <label className="block text-sm">
+            Your hustle rate ($/hr)
+            <input
+              type="text"
+              inputMode="decimal"
+              value={sideHustleRate}
+              onChange={(e) => setSideHustleRate(e.target.value)}
+              disabled={!includeSideHustle}
+              placeholder="20.00"
+              className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono disabled:opacity-50"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="border-2 border-ink bg-cta px-4 py-2 font-mono text-xs uppercase"
+          >
+            Save
+          </button>
+          {saved && <p className="font-mono text-xs text-muted">Saved!</p>}
+        </section>
+
+        <section className="border-3 border-ink p-6 shadow-brutal space-y-4">
+          <h2 className="font-mono text-xs uppercase">Compare to your current job</h2>
+          <p className="text-sm text-muted">
+            If a job&apos;s pay divided by shift + drive time works out to less than
+            your current job&apos;s hourly wage, we&apos;ll flag it as not worth it.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={includeHourlySalary}
+              onChange={(e) => setIncludeHourlySalary(e.target.checked)}
+              className="border-2 border-ink"
+            />
+            Compare Sweeps jobs to my current job
+          </label>
+          <label className="block text-sm">
+            Your current job&apos;s hourly wage ($/hr)
+            <input
+              type="text"
+              inputMode="decimal"
+              value={hourlySalary}
+              onChange={(e) => setHourlySalary(e.target.value)}
+              disabled={!includeHourlySalary}
+              placeholder="25.00"
+              className="mt-1 w-full border-2 border-ink px-3 py-2 font-mono disabled:opacity-50"
             />
           </label>
           <button

@@ -81,7 +81,7 @@ export async function getJob(id: string): Promise<SweepsJob> {
 
 export async function updateJob(
   id: string,
-  data: { status?: string; pay_amount?: number }
+  data: { status?: string; pay_amount?: number; duration_minutes?: number }
 ): Promise<SweepsJob> {
   return apiFetch<SweepsJob>(`/jobs/${id}`, {
     method: "PATCH",

@@ -53,6 +53,9 @@ export interface CommuteResult {
   worth_it_headline: string;
   worth_it_subline: string;
   net_profit: number;
+  effective_hourly_rate: number | null;
+  total_time_hours: number | null;
+  current_job_earnings: number | null;
   geometry?: [number, number][] | null;
 }
 

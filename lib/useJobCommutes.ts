@@ -62,6 +62,7 @@ export function useJobCommute(
   jobId: string | null,
   originLat: number | null,
   originLng: number | null,
+  refreshKey: number = 0,
 ): CommuteResult | null {
   const [commute, setCommute] = useState<CommuteResult | null>(null);
   const fetchedKeyRef = useRef<string | null>(null);
@@ -69,7 +70,7 @@ export function useJobCommute(
   useEffect(() => {
     if (!jobId || originLat == null || originLng == null) return;
 
-    const cacheKey = originJobCacheKey(originLat, originLng, jobId);
+    const cacheKey = `${originJobCacheKey(originLat, originLng, jobId)}|${refreshKey}`;
     if (fetchedKeyRef.current === cacheKey) return;
     fetchedKeyRef.current = cacheKey;
 
@@ -86,7 +87,7 @@ export function useJobCommute(
       cancelled = true;
       fetchedKeyRef.current = null;
     };
-  }, [jobId, originLat, originLng]);
+  }, [jobId, originLat, originLng, refreshKey]);
 
   return commute;
 }

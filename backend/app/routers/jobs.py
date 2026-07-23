@@ -184,6 +184,8 @@ async def update_job(
         job.status = JobStatus(body.status.value)
     if body.pay_amount is not None:
         job.pay_amount = body.pay_amount
+    if body.duration_minutes is not None:
+        job.duration_minutes = body.duration_minutes if body.duration_minutes > 0 else None
     await db.commit()
     await db.refresh(job)
     return _job_to_out(job)
@@ -212,6 +214,7 @@ async def compute_job_commute(
             user.cost_settings,
             pay,
             body.round_trip,
+            job_duration_minutes=job.duration_minutes,
         )
     except ValueError as e:
         msg = str(e)
@@ -234,6 +237,9 @@ async def compute_job_commute(
         worth_it_headline=result["worth_it_headline"],
         worth_it_subline=result["worth_it_subline"],
         net_profit=result["net_profit"],
+        effective_hourly_rate=result.get("effective_hourly_rate"),
+        total_time_hours=result.get("total_time_hours"),
+        current_job_earnings=result.get("current_job_earnings"),
         geometry=result.get("geometry"),
     )
 

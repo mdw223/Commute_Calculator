@@ -27,8 +27,8 @@ export function isValidSalaryAmount(value: number): boolean {
   return Number.isFinite(value) && value > 0;
 }
 
-export function parseSalaryInput(raw: string): number | null {
-  const trimmed = raw.trim().replace(/,/g, "");
+export function parseSalaryInput(raw: string | number): number | null {
+  const trimmed = String(raw).trim().replace(/,/g, "");
   if (!trimmed) return null;
   const value = parseFloat(trimmed);
   if (!isValidSalaryAmount(value)) return null;
