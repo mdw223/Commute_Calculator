@@ -37,9 +37,48 @@ services:
     networks:
       - sweeps_net
 
+  coverletter_db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: coverletters
+      POSTGRES_PASSWORD: coverletters
+      POSTGRES_DB: coverletters
+    # Kept on a separate volume/network from `db` (Sweeps) — Cover Letter
+    # Studio has its own accounts and will eventually be billed separately.
+    # ports:
+    #   - "127.0.0.1:5433:5432"
+    volumes:
+      - coverletter_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coverletters"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - coverletter_net
+
+  coverletter_backend:
+    build: ./coverletter-backend
+    ports:
+      - "127.0.0.1:8001:8001"  # localhost only; host nginx proxies to here
+    env_file:
+      - ./coverletter-backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://coverletters:coverletters@coverletter_db:5432/coverletters
+    depends_on:
+      coverletter_db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - coverletter_net
+
 volumes:
   sweeps_pg_data:
+  coverletter_pg_data:
 
 networks:
   sweeps_net:
+    driver: bridge
+  coverletter_net:
     driver: bridge
