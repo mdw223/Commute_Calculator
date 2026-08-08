@@ -63,7 +63,10 @@ cp .env.example .env   # configure Google OAuth, Gemini API key, and R2 credenti
 uvicorn app.main:app --reload --port 8001
 ```
 
-See [coverletter-backend/README.md](coverletter-backend/README.md) for details.
+See [coverletter-backend/README.md](coverletter-backend/README.md) and
+[coverletter-backend/docs/SETUP.md](coverletter-backend/docs/SETUP.md) (Google OAuth,
+Gemini API key, Cloudflare R2 — including how to reuse the same Google OAuth
+client as Sweeps) for details.
 
 ## Deploy to Vercel
 

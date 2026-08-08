@@ -53,12 +53,20 @@ Regenerating the default template (only needed if you change its layout):
 python scripts/generate_template.py
 ```
 
+## Full setup guide (Google OAuth, Gemini, Cloudflare R2)
+
+**Start here:** [docs/SETUP.md](docs/SETUP.md) — step-by-step instructions for:
+
+- Reusing the **same Google Cloud OAuth Client** as the Sweeps backend
+  (just register a second redirect URI — no need for a new client, and no
+  need to run this service on the same port as Sweeps)
+- Getting a free [Gemini API key](https://aistudio.google.com/apikey)
+- Creating a Cloudflare R2 bucket + API token
+- Running this backend **and** the Sweeps backend **and** the Next.js
+  frontend together on `localhost` for full local testing (sign-in
+  included) — you do not need to deploy anything to test this locally
+
 ## Environment variables
 
-See [.env.example](.env.example). You'll need:
-
-- A Google OAuth 2.0 Client (Web) — can reuse the same Google Cloud project
-  as Sweeps, just add `http://localhost:8001/auth/google/callback` (and your
-  production callback URL) as an additional authorized redirect URI.
-- A free [Gemini API key](https://aistudio.google.com/apikey).
-- A Cloudflare R2 bucket + API token (Account → R2 → Manage API Tokens).
+See [.env.example](.env.example) for the full list, or
+[docs/SETUP.md](docs/SETUP.md) for how to obtain each value.
