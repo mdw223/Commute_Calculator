@@ -8,6 +8,7 @@ export default function SiteNav() {
   const pathname = usePathname();
   const isSalaryPage = pathname === "/calculator";
   const isSweepsPage = pathname.startsWith("/sweeps");
+  const isCoverLettersPage = pathname.startsWith("/cover-letters");
 
   return (
     <nav className="border-b-3 border-ink bg-surface px-3 py-2 flex flex-wrap items-center gap-2">
@@ -28,6 +29,13 @@ export default function SiteNav() {
           </Link>
           <SweepsNavLocation />
         </div>
+      ) : isCoverLettersPage ? (
+        <Link
+          href="/"
+          className="inline-block border-3 border-ink bg-surface px-4 py-2 font-mono text-xs uppercase hover:bg-cta/20 transition-colors shadow-brutal-sm"
+        >
+          ← Commute calculator
+        </Link>
       ) : (
         <>
           <Link
@@ -41,6 +49,12 @@ export default function SiteNav() {
             className="inline-block border-3 border-ink bg-surface px-4 py-2 font-mono text-xs uppercase hover:bg-cta/20 transition-colors shadow-brutal-sm"
           >
             Sweeps Jobs →
+          </Link>
+          <Link
+            href="/cover-letters"
+            className="inline-block border-3 border-ink bg-surface px-4 py-2 font-mono text-xs uppercase hover:bg-cta/20 transition-colors shadow-brutal-sm"
+          >
+            Cover Letter Studio →
           </Link>
         </>
       )}
