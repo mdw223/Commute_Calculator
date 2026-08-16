@@ -1,0 +1,14 @@
+[Unit]
+Description=Commute Calculator Next.js frontend (jobs.tritechhelp.com)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/Commute_Calculator
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npx next start -H 127.0.0.1 -p 3003
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

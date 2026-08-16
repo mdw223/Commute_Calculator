@@ -6,8 +6,9 @@ name: Deploy to VPS
 #   VPS_DEPLOY_PATH   — Absolute path to repo on VPS (e.g. /home/deploy/Commute_Calculator)
 #   VPS_SSH_KEY       — Private key for GitHub Actions → VPS SSH (NOT the VPS→GitHub deploy key)
 #
-# One-time on VPS: clone repo, configure backend/.env, ensure git remote can pull main.
-# Frontend still deploys via Vercel on push to main; this workflow only updates the Python backend.
+# One-time on VPS: clone repo, configure backend/.env and .env.local, install
+# commute-frontend.service, ensure git remote can pull main.
+# This workflow deploys the Python backend (Docker) and the Next.js frontend (systemd).
 on:
   workflow_dispatch:
   push:
@@ -27,6 +28,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 15m
           # port: 22  # uncomment if SSH is not on the default port
           script: |
             set -euo pipefail
@@ -36,3 +38,6 @@ jobs:
             git pull origin main
             docker compose up --build -d
             docker image prune -f
+            npm ci
+            npm run build
+            sudo systemctl restart commute-frontend

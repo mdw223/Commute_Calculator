@@ -35,8 +35,11 @@ In **APIs & Services → Library**, enable:
 2. Application type: **Web application**
 3. Authorized redirect URIs:
    - `http://localhost:8000/auth/google/callback` (local backend)
-   - `https://YOUR-RAILWAY-URL/auth/google/callback` (production backend)
-4. Copy **Client ID** and **Client Secret** into `backend/.env`
+   - `https://api-jobs.tritechhelp.com/auth/google/callback` (production backend)
+4. Authorized JavaScript origins:
+   - `http://localhost:3000` (local frontend)
+   - `https://jobs.tritechhelp.com` (production frontend)
+5. Copy **Client ID** and **Client Secret** into `backend/.env`
 
 ## 5. Environment variables
 
@@ -61,7 +64,8 @@ The backend polls only messages with the `Sweeps` label.
 
 ## 7. Production checklist
 
-- [ ] Add production redirect URI to OAuth client
-- [ ] Set `FRONTEND_URL` to your Vercel domain
+- [ ] Add production redirect URI to OAuth client (`https://api-jobs.tritechhelp.com/auth/google/callback`)
+- [ ] Add production JS origin `https://jobs.tritechhelp.com`
+- [ ] Set `FRONTEND_URL` to `https://jobs.tritechhelp.com`
 - [ ] Generate a strong `SECRET_KEY` and `ENCRYPTION_KEY`
 - [ ] Submit OAuth app for verification if opening to public users (sensitive scopes)

@@ -126,7 +126,7 @@ Switch back to `ENV=development` when done.
 | OAuth redirect mismatch | `GOOGLE_REDIRECT_URI` must match Google Console exactly |
 | CORS error on frontend | `CORS_ORIGINS=http://localhost:3000` |
 | DB connection refused | `docker compose up -d db` + `localhost` in `DATABASE_URL` |
-| Sign-in redirects to Vercel | Set `FRONTEND_URL=http://localhost:3000` |
+| Sign-in redirects to production | Set `FRONTEND_URL=http://localhost:3000` (must match the origin you opened) |
 | Rate limits while testing | Set `RATE_LIMIT_ENABLED=false` temporarily |
 
 Fastest path: **pytest first**, then **docker db + uvicorn + npm run dev** with the local env overrides flipped on.

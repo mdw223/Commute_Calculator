@@ -9,7 +9,7 @@ Includes a **Sweeps Job Dashboard** (`/sweeps`) that ingests labeled Gmail notif
 - Next.js (App Router) + TypeScript + Tailwind CSS
 - [OpenRouteService](https://openrouteservice.org/) for geocoding & driving directions
 - **Sweeps automation:** Python FastAPI backend + PostgreSQL (Gmail + Google Calendar)
-- Deployed on Vercel (frontend) + Railway/VPS (backend)
+- Deployed on a Contabo VPS: Next.js (`jobs.tritechhelp.com`) + FastAPI (`api-jobs.tritechhelp.com`)
 
 ## Setup
 
@@ -50,12 +50,8 @@ uvicorn app.main:app --reload --port 8000
 
 See [backend/docs/GOOGLE_CLOUD_SETUP.md](backend/docs/GOOGLE_CLOUD_SETUP.md) for Google OAuth setup.
 
-## Deploy to Vercel
+## Deploy (VPS)
 
-1. Push to GitHub and import in Vercel
-2. Add environment variables:
-   - `ORS_API_KEY`
-   - `NEXT_PUBLIC_SWEEPS_API_URL` (your backend URL)
-3. Deploy
+Production is **VPS-only**: Next.js via systemd behind host nginx, FastAPI via Docker Compose.
 
-Backend deployment: [backend/docs/DEPLOYMENT.md](backend/docs/DEPLOYMENT.md)
+See [backend/docs/DEPLOYMENT.md](backend/docs/DEPLOYMENT.md) for DNS, nginx, systemd, env vars, Google OAuth, and GitHub Actions.

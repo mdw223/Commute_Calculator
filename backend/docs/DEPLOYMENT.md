@@ -1,41 +1,44 @@
 # Sweeps Automation Deployment
 
-Hybrid setup: **Next.js on Vercel** + **Python backend on a VPS** (Contabo). Railway is documented as an alternative below.
+**VPS-only:** Next.js frontend and Python backend both run on the Contabo box behind host nginx. Railway is documented as an alternative below.
 
 | Component | Host | Public URL |
 |-----------|------|------------|
-| Dashboard (`/sweeps`) | Vercel | `https://<vercel-app>.vercel.app` |
-| Sweeps API | Contabo VPS (`vmi3257883`) | `https://api-jobs.tritechhelp.com` |
+| Dashboard (`/sweeps`) | Contabo VPS (systemd `commute-frontend`) | `https://jobs.tritechhelp.com` |
+| Sweeps API | Contabo VPS (`vmi3257883`, Docker) | `https://api-jobs.tritechhelp.com` |
 | Postgres | Docker (internal network) | not exposed publicly |
 
 **Reverse proxy:** host nginx on the VPS (Path B — gateway).
 
 - Operator architecture: [`/root/docs/vps-edge-proxy.md`](/root/docs/vps-edge-proxy.md)
-- Versioned site config in this repo: [`deploy/nginx/api-jobs.tritechhelp.com.conf`](../../deploy/nginx/api-jobs.tritechhelp.com.conf) → install to `/etc/nginx/sites-available/`
+- API site config: [`deploy/nginx/api-jobs.tritechhelp.com.conf`](../../deploy/nginx/api-jobs.tritechhelp.com.conf) → `/etc/nginx/sites-available/`
+- Frontend site config: [`deploy/nginx/jobs.tritechhelp.com.conf`](../../deploy/nginx/jobs.tritechhelp.com.conf) → `/etc/nginx/sites-available/`
+- Frontend unit: [`deploy/systemd/commute-frontend.service`](../../deploy/systemd/commute-frontend.service) → `/etc/systemd/system/`
 
 ---
 
 ## Architecture
 
 ```text
-User on Vercel (/sweeps)
+User on https://jobs.tritechhelp.com/sweeps
     → clicks "Sign in"
     → https://api-jobs.tritechhelp.com/auth/google/login
     → Google login
     → https://api-jobs.tritechhelp.com/auth/google/callback
     → backend issues JWT
-    → https://<vercel-app>.vercel.app/sweeps/auth/callback#token=...
+    → https://jobs.tritechhelp.com/sweeps/auth/callback#token=...
 ```
 
-Google OAuth is server-side on the Python backend — Google does **not** talk to Vercel for the callback.
+Google OAuth is server-side on the Python backend — Google does **not** talk to the Next.js process for the callback.
 
 ```text
 Internet :443
     │
     ▼
 Host nginx (/etc/nginx/)          ← only thing on 80/443
-    ├── api.islamiccalendarsync.com  → 127.0.0.1:3000  (/api rewrite)
-    └── api-jobs.tritechhelp.com     → 127.0.0.1:8000
+    ├── jobs.tritechhelp.com         → 127.0.0.1:3003  (Next.js systemd)
+    ├── api-jobs.tritechhelp.com     → 127.0.0.1:8000  (FastAPI Docker)
+    └── api.islamiccalendarsync.com  → 127.0.0.1:3000  (/api rewrite)
 ```
 
 Each project binds to `127.0.0.1:<port>` only. New automations on `tritechhelp.com` add one nginx site file + certbot — no app code changes.
@@ -49,6 +52,11 @@ At your `tritechhelp.com` registrar:
 ```text
 Type: A
 Name: api-jobs
+Value: <Contabo VPS IP>
+TTL: Auto / 300
+
+Type: A
+Name: jobs
 Value: <Contabo VPS IP>
 TTL: Auto / 300
 ```
@@ -123,8 +131,8 @@ ENV=production
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=https://api-jobs.tritechhelp.com/auth/google/callback
-FRONTEND_URL=https://<vercel-app>.vercel.app
-CORS_ORIGINS=https://<vercel-app>.vercel.app
+FRONTEND_URL=https://jobs.tritechhelp.com
+CORS_ORIGINS=https://jobs.tritechhelp.com
 ALLOWED_EMAILS=you@gmail.com
 TRUSTED_HOSTS=api-jobs.tritechhelp.com,localhost,127.0.0.1
 SECRET_KEY=<random 64-char string>
@@ -136,7 +144,7 @@ RATE_LIMIT_ENABLED=true
 
 `ALLOWED_EMAILS`: comma-separated list for personal use. Leave **empty** to allow any Google account (open signup).
 
-`backend/.env` lives only on the VPS (not in git).
+`backend/.env` lives only on the VPS (not in git). Frontend env is a separate gitignored `.env.local` at the repo root (see section 4).
 
 Start the stack:
 
@@ -327,17 +335,45 @@ Enable, `nginx -t`, `reload`, `certbot --nginx -d api-foo.tritechhelp.com`.
 
 ---
 
-## 4. Deploy Next.js frontend (Vercel)
+## 4. Deploy Next.js frontend (VPS)
 
-1. Import the repo in Vercel (existing Commute Calculator project)
-2. Set environment variables:
+The frontend is a systemd service bound to `127.0.0.1:3003` (not 3001 — Inbox Guard already uses that port). Host nginx proxies `jobs.tritechhelp.com` to it.
 
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_SWEEPS_API_URL` | `https://api-jobs.tritechhelp.com` |
-| `ORS_API_KEY` | (existing) |
+### One-time: Node, env, build, unit
 
-3. Redeploy — frontend still deploys automatically on push to `main`.
+Install **Node 22** on the host if missing (Next 16 needs Node 20+). Use NodeSource so systemd sees `/usr/bin/node` and `/usr/bin/npx` — nvm is invisible to systemd.
+
+```bash
+cd ~/Commute_Calculator
+# .env.local is gitignored. NEXT_PUBLIC_* is baked in at build time.
+cat > .env.local << 'EOF'
+ORS_API_KEY=<same key as backend/.env>
+NEXT_PUBLIC_SWEEPS_API_URL=https://api-jobs.tritechhelp.com
+EOF
+npm ci
+npm run build
+sudo cp deploy/systemd/commute-frontend.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now commute-frontend
+ss -tlnp | grep 3003   # should show 127.0.0.1:3003
+```
+
+`.env.local` must exist **before** `npm run build` so `NEXT_PUBLIC_SWEEPS_API_URL` is inlined. `ORS_API_KEY` is read at runtime by Next.js API routes (`/api/geocode`, `/api/route`, `/api/pois`).
+
+### Nginx + TLS
+
+Copy [`deploy/nginx/jobs.tritechhelp.com.conf`](../../deploy/nginx/jobs.tritechhelp.com.conf) (HTTP-only) after the DNS A record for `jobs` points here:
+
+```bash
+sudo cp deploy/nginx/jobs.tritechhelp.com.conf /etc/nginx/sites-available/jobs.tritechhelp.com
+sudo ln -sf /etc/nginx/sites-available/jobs.tritechhelp.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d jobs.tritechhelp.com
+```
+
+After Certbot, copy the live SSL file back into `deploy/nginx/jobs.tritechhelp.com.conf` (same pattern as `api-jobs`).
+
+Pushes to `main` rebuild and restart the frontend via GitHub Actions (section 6).
 
 ---
 
@@ -354,13 +390,13 @@ See [GOOGLE_CLOUD_SETUP.md](./GOOGLE_CLOUD_SETUP.md) for API enablement and cons
 | Production | `https://api-jobs.tritechhelp.com/auth/google/callback` |
 | Local dev | `http://localhost:8000/auth/google/callback` |
 
-Do **not** use `127.0.0.1`, raw VPS IP, or Vercel URL for the callback.
+Do **not** use `127.0.0.1`, raw VPS IP, or a Vercel URL for the callback.
 
 **Authorized JavaScript origins:**
 
 | Environment | Origin |
 |-------------|--------|
-| Production frontend | `https://<vercel-app>.vercel.app` |
+| Production frontend | `https://jobs.tritechhelp.com` |
 | Local frontend | `http://localhost:3000` |
 
 Add your Gmail as a **test user** while the app is in Testing mode.
@@ -371,7 +407,7 @@ Add your Gmail as a **test user** while the app is in Testing mode.
 
 Workflow: [`.github/workflows/deploy-vps.yml`](../../.github/workflows/deploy-vps.yml)
 
-Runs `git pull` + `docker compose up --build -d` on the VPS. Only updates the Python backend; Vercel handles the frontend.
+Runs `git pull`, `docker compose up --build -d`, `npm ci`, `npm run build`, and `systemctl restart commute-frontend`. Deploys **backend + frontend**.
 
 Add **repository secrets** (Settings → Secrets and variables → Actions):
 
@@ -382,7 +418,7 @@ Add **repository secrets** (Settings → Secrets and variables → Actions):
 | `VPS_DEPLOY_PATH` | `/root/Commute_Calculator` |
 | `VPS_SSH_KEY` | Private key for Actions → VPS (`github_actions_vps` in `authorized_keys` — **not** the VPS→GitHub deploy key) |
 
-One-time on VPS: clone repo, configure `backend/.env`, ensure `git remote` can pull `main` (via `github-commute` deploy key).
+One-time on VPS: clone repo, configure `backend/.env` and `.env.local`, install `commute-frontend.service`, ensure `git remote` can pull `main` (via `github-commute` deploy key).
 
 ### Key map (this VPS)
 
@@ -398,7 +434,7 @@ SSH into VPS           →  laptop key              →  authorized_keys
 ## 7. Verify
 
 1. `curl https://api-jobs.tritechhelp.com/health` → `{"status":"ok"}`
-2. Visit `https://<vercel-app>.vercel.app/sweeps`
+2. Visit `https://jobs.tritechhelp.com/sweeps`
 3. Sign in with Google
 4. Create Gmail filter (Settings page): `from:newjob@sweeps.jobs` → label `Sweeps`
 5. Forward a Sweeps email or wait for a new one
@@ -447,17 +483,19 @@ JWT is delivered via URL **hash fragment** (`/sweeps/auth/callback#token=...`) s
 
 ## Pre-flight checklist
 
-- [ ] DNS A record `api-jobs` → VPS IP
+- [ ] DNS A records `api-jobs` and `jobs` → VPS IP
 - [ ] `api_service_prod` on `127.0.0.1:3000`; Docker nginx `proxy` commented out in ICS `compose.prod.yml` (if sharing VPS)
 - [ ] Host nginx site configs from `deploy/nginx/` in `/etc/nginx/sites-available/`
 - [ ] Architecture doc: `/root/docs/vps-edge-proxy.md`
 - [ ] `sudo nginx -t` passes
 - [ ] `docker compose up -d` — API on `127.0.0.1:8000` (Sweeps Postgres not publishing host 5432 beside ICS)
-- [ ] Certbot SSL for `api-jobs.tritechhelp.com`
+- [ ] Node 22 on the host; `.env.local` filled; `commute-frontend` enabled on `127.0.0.1:3003`
+- [ ] Certbot SSL for `api-jobs.tritechhelp.com` and `jobs.tritechhelp.com`
 - [ ] `curl https://api-jobs.tritechhelp.com/health` OK
-- [ ] Google redirect URI + JS origin saved
-- [ ] `backend/.env` and Vercel `NEXT_PUBLIC_SWEEPS_API_URL` updated
-- [ ] Test: Vercel `/sweeps` → Sign in with Google
+- [ ] `curl -I https://jobs.tritechhelp.com` OK
+- [ ] Google redirect URI + JS origin saved (`https://jobs.tritechhelp.com`)
+- [ ] `backend/.env` `FRONTEND_URL` / `CORS_ORIGINS` set to `https://jobs.tritechhelp.com`
+- [ ] Test: `https://jobs.tritechhelp.com/sweeps` → Sign in with Google
 
 ---
 
@@ -475,10 +513,10 @@ If you prefer managed hosting instead of the VPS:
 | `DATABASE_URL` | From Railway Postgres |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud OAuth client |
 | `GOOGLE_REDIRECT_URI` | `https://YOUR-RAILWAY-URL/auth/google/callback` |
-| `FRONTEND_URL` / `CORS_ORIGINS` | `https://<vercel-app>.vercel.app` |
+| `FRONTEND_URL` / `CORS_ORIGINS` | `https://jobs.tritechhelp.com` |
 | `SECRET_KEY` / `ENCRYPTION_KEY` / `ORS_API_KEY` | See `backend/.env.example` |
 
-5. Set Vercel `NEXT_PUBLIC_SWEEPS_API_URL` to the Railway URL
+5. Point the VPS frontend `.env.local` `NEXT_PUBLIC_SWEEPS_API_URL` at the Railway URL and rebuild (`npm run build` + `systemctl restart commute-frontend`)
 6. Add the Railway callback URI to Google OAuth redirect URIs
 
 ---
@@ -487,7 +525,6 @@ If you prefer managed hosting instead of the VPS:
 
 | Service | Cost |
 |---------|------|
-| Vercel (hobby) | Free |
 | Contabo VPS | ~$5–7/mo (shared with other projects) |
 | Railway (alternative) | ~$5/mo |
 | ORS API | Free tier |
